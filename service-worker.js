@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gauss-scan-v2';
+const CACHE_NAME = 'gauss-scan-v3';
 const ASSETS = [
   './index.html',
   './manifest.json',
