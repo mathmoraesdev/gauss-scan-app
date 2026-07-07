@@ -5,6 +5,10 @@ const ASSETS = [
   './icon-192.png',
   './icon-512.png'
 ];
+// Nota: a biblioteca de geração de PDF (html2pdf.js) é carregada de um CDN externo.
+// Ela é cacheada automaticamente pela estratégia de fetch abaixo após o primeiro uso
+// com internet, mas não é pré-cacheada aqui para não travar a instalação caso o
+// CDN esteja fora do ar no momento da instalação do app.
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
