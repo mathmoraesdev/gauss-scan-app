@@ -313,6 +313,32 @@
     margin-top:10px;min-height:14px;
   }
   .save-status.ok{color:var(--good);}
+
+  /* ---------- PDF REPORT (off-screen render target for html2pdf) ---------- */
+  .pdf-report{
+    position:fixed;
+    top:0;
+    left:-9999px;
+    width:760px;
+    background:#fff;
+    color:#111;
+    font-family:'Inter',Arial,sans-serif;
+    padding:24px;
+  }
+  .pdf-report h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;color:#0d1424;}
+  .pdf-report .pr-sub{color:#666;font-size:12px;margin-bottom:18px;}
+  .pdf-report h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:22px 0 8px;color:#1e3a8a;border-bottom:1px solid #ddd;padding-bottom:4px;}
+  .pdf-report .pr-item{font-size:12.5px;margin:4px 0;padding-left:16px;position:relative;}
+  .pdf-report .pr-item:before{content:"\2713";position:absolute;left:0;color:#22a094;font-weight:700;}
+  .pdf-report .pr-obs{color:#666;font-size:11.5px;margin-left:16px;font-style:italic;}
+  .pdf-report .pr-score{font-size:34px;font-weight:700;color:#1e3a8a;font-family:'Space Grotesk',sans-serif;}
+  .pdf-report .pr-score-tag{font-size:12px;color:#666;margin-bottom:10px;}
+  .pdf-report .pr-pillars{margin-top:6px;}
+  .pdf-report .pr-pillar-row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px solid #eee;max-width:340px;}
+  .pdf-report .pr-pillar-val{color:#1e3a8a;font-weight:700;}
+  .pdf-report .pr-empty{color:#999;font-size:12px;font-style:italic;}
+  .pdf-report .pr-text{font-size:12.5px;line-height:1.5;white-space:pre-wrap;}
+  .pdf-report .pr-gain{font-size:20px;font-weight:700;color:#0f9d78;}
 </style>
 </head>
 <body>
@@ -359,7 +385,7 @@
         <button class="btn" onclick="novoDiagnostico()">+ Novo</button>
       </div>
       <div class="meta-row" style="margin-top:8px">
-        <button class="btn" onclick="exportarPDF()">📄 Exportar PDF</button>
+        <button class="btn" id="btnExportarPDF" onclick="exportarPDF()">📄 Exportar PDF</button>
         <button class="btn" onclick="exportarBackup()">⬇ Backup (.json)</button>
         <button class="btn" onclick="document.getElementById('importFile').click()">⬆ Importar backup</button>
         <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarBackup(event)">
@@ -489,6 +515,10 @@
 
   <footer class="no-print">gauss data · gauss scan · dados salvos neste aparelho (localStorage)</footer>
 </div>
+
+<div id="pdfRenderArea" class="pdf-report"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <script>
 // ---------------- DATA MODEL ----------------
@@ -948,39 +978,39 @@ function buildPrintReport(){
   return html;
 }
 
-const PRINT_STYLES = `
-  @page{ margin:16mm; }
-  *{box-sizing:border-box;}
-  body{background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;padding:0;margin:0;}
-  h1{font-size:24px;margin:0 0 4px;color:#0d1424;}
-  .pr-sub{color:#666;font-size:12px;margin-bottom:18px;}
-  h2{font-size:15px;margin:22px 0 8px;color:#1e3a8a;border-bottom:1px solid #ddd;padding-bottom:4px;page-break-after:avoid;}
-  .pr-item{font-size:12.5px;margin:4px 0;padding-left:16px;position:relative;page-break-inside:avoid;}
-  .pr-item:before{content:"\\2713";position:absolute;left:0;color:#22a094;font-weight:700;}
-  .pr-obs{color:#666;font-size:11.5px;margin-left:16px;font-style:italic;}
-  .pr-score{font-size:34px;font-weight:700;color:#1e3a8a;}
-  .pr-score-tag{font-size:12px;color:#666;margin-bottom:10px;}
-  .pr-pillars{margin-top:6px;}
-  .pr-pillar-row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px solid #eee;max-width:340px;}
-  .pr-pillar-val{color:#1e3a8a;font-weight:700;}
-  .pr-empty{color:#999;font-size:12px;font-style:italic;}
-  .pr-text{font-size:12.5px;line-height:1.5;white-space:pre-wrap;}
-  .pr-gain{font-size:20px;font-weight:700;color:#0f9d78;}
-`;
-
 function exportarPDF(){
-  const reportHtml = buildPrintReport();
-  const printWin = window.open('', '_blank');
-  if(!printWin){
-    alert('Seu navegador bloqueou a janela do relatório. Permita pop-ups para este site e tente de novo.');
+  const area = document.getElementById('pdfRenderArea');
+  area.innerHTML = buildPrintReport();
+  const btn = document.getElementById('btnExportarPDF');
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Gerando PDF...';
+  btn.disabled = true;
+
+  const finish = () => { btn.textContent = originalLabel; btn.disabled = false; area.innerHTML = ''; };
+
+  if(typeof html2pdf === 'undefined'){
+    alert('Não foi possível carregar o gerador de PDF (verifique sua conexão) e tente novamente.');
+    finish();
     return;
   }
-  printWin.document.open();
-  printWin.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Gauss Scan — ${escapeHtml(state.empresaNome||'Diagnóstico')}</title><style>${PRINT_STYLES}</style></head><body>${reportHtml}</body></html>`);
-  printWin.document.close();
-  const triggerPrint = () => { try{ printWin.focus(); printWin.print(); }catch(e){} };
-  printWin.onload = triggerPrint;
-  setTimeout(triggerPrint, 400); // fallback if onload doesn't fire (some mobile browsers)
+
+  const slug = slugify(state.empresaNome) || 'diagnostico';
+  html2pdf()
+    .set({
+      margin: 10,
+      filename: `gauss-scan-${slug}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] }
+    })
+    .from(area)
+    .save()
+    .then(finish)
+    .catch((err) => {
+      alert('Erro ao gerar o PDF. Tente novamente.');
+      finish();
+    });
 }
 
 // ---------------- SERVICE WORKER (instalação como app) ----------------
