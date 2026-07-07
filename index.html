@@ -880,95 +880,249 @@ async function importarBackup(event){
   event.target.value = '';
 }
 
-// ---------------- PDF (gerado em texto puro via jsPDF — sem screenshot de tela) ----------------
+// ---------------- PDF (gerado em texto/vetor puro via jsPDF — sem screenshot de tela) ----------------
+
+const LOGO_PNG_B64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAMV0lEQVR4nO2dXcskRxXHzzzIXuz1XvZM7nT9BCJeiIgiIl4oXgSN0RCCiCjLshJ8CSGKaMISYnyLSEQURUSREIIYRCR44SfYXe+cnq/hPF44/Tw93fVyqrqq61Sd/w8eyHbXTHdm/v9zTr10zebGzVuXBIBSLkrfAAAlgQGAamAAoBoYAKgGBgCqgQGAamAAoBoYAKgGBgCqgQGAamAAoBoYAKgGBgCqgQGAamAAoBoYAKgGBgCqgQGAamAAoBoYAKgGBgCqgQGAamAAoBoYAKgGBgCqeVfpG2id7p+PnGHm8P73rHczYAYMkIjuHbfQgUxggEi6dx6VvgWQABiASfePkeAR6ZsBBnBwJnrQJDCAge7vEL4WYIARbOEfyVwGhR4HxYEByCF8CLd5VBug+xtKHe2oNMBM+Ij0alFlgKiIj7q+adR8hd3bj/4vWhuucyGkeh+wCs1ngO7tBOUOon2zNP21zsTvIzR6I9pXT7MG6P7qED+EC040VwI5hT8Gk1mAGvtKZ+K/LHMfoB6aMYA18rtMYCuFQkokU1vuMVCcJgzQ/cVT9qTKBBBxc1RvgCvxx4ozRRYA1VK1AWaR3yXamFKI2xZmqZZqDWAte2JNEPpeoAmqNIC35ndhM0FqscM8VVCdAbq3PGt6iNKKDyVP01RlgO6tUeRfYoIcWQCmqJJqDHAm/oG1TABxs3ns8Qf02OMPSt8GmyoMYBT/wJrl0BrvWzFj4ddigioM4CXWBLmzgCKT1CL4KeIN0L156vRyRB7zwMuSWeLpeyoS/Bib+GswhWgDdG8GTHRx2oSYIEdfoEGD+EQu3QSbGzdviVwzORP/GI5tXW1M5zbMtpH/PnygrV2gucK+PH2u+9++N+PdxFPn8wBDJHWJPHT9/iXZTeB6X8O/Dx9sS+xTQsUvGZEZoHsjYKtxXzvbedtx05fmi/JEdPhQ26If4IjfJnyJWUCcAbo3InZhzm0CU7uhtFEifKJl4h+QZgLZJRCn1BnaxZRD3DJp0u7wYT2iH/CJv4Zyx4SoDHAW/aekyAYhmcBSCmkTf4qov8YF0f43crKA7AwwJkU2CMkEk07x4SO6hE+UOOoLHXAXc1vO6D+GOykWes7xGoh/Dlv8FzRT2e5zcuYG5GQAboQft48dBmVmAo3CJ0osfuGIuMXuz5NlztwZU87yh8hnfg8fhfinXG6Y4jdE/SlSsoCcDDAlJCOkHAU6Eh0+pk/8SaK+iHAaRvFbPov+JrgZIXYx3OQ4xH8OK+ozIr7pNbvPl88CxQ3AJsQIoedO7w3xn5Ml6seYJSNFb6X7U+QPVnDaeMQ+5fBxiH8gedS/IGv70lmgfB9gLMaQESBOe+ZIkEbx22AJn4ugSG+j2C0ao3/ICBC3vScbaBb/f353PSPrjfoxEZ9JySwg06O5jACMJIv6wup7DrJv90hhZgicFzh8Qm/0HxhngRlcQccK39E3WIsil47u/CY0AsR/zWyJMkeUS8RrWh7xhTJlUJlO8LD+NGYJbUinOXR5hXaWPmqa43WZKXtbl6O/GCInyQ6fRPSf4n1QJXKyq3SJ40POrS0xQ4ARIH47xnX6oQKuQPRjVr/N7o+M+j/WDKGdZmAn0URXCCX6AeUnwnyMTRDSZ0D9H0eq57BzXDMD8g0wZpoRuNuYnDh8qo7yp/vXv4tde+3kefHaf1e+4jnrGyBlZI7NDgCcWDX5dH8wPPiSqmb39Btqif7a2T21bj9ATglkMkGsPZEZABM5BjAxNUWMIcRs+gIkItsAUyKzxOHTKH/EU2gkqC4DmEiRJUA5Cn9f6xpgjbF5TIKBAFbzX/d7xwhQ6hEhUDW7p9cbCZJZAvlMgDIHJEKmAXwEGOTwGXSAgZ06DeADZVR9YBQIqETNKFDM9icAZKZMBkCJAoSAWAxUAwMA1cAAoCyFV+u2MQqEPkXdFDQBOsFANWWGQQEQAvoAQDVNGWBznP9tfx2xDylQQ3Wd4A1KqbYYQnCh73W1DHD4LH9VpimSD3+gUUa7y+1f8+xTmpBiGWA1MR/xVDyws6oBVhE9BA8CqL8TfLw8/zOw/dXDlW8K1EJ1nWBEeJAS2QZIIXZ0nGWjZRSIiKh/wjMSxChnWBh2mNj+EmWQaIYRoJ+uNwJEVDoDpCxnEOlBBAW2Ry8n+u3rD6l/6na662fi8L53F7v27muGPXlig0sFQUl2H8BE6IeKPvNyxoVyyOcf+7oVWX0YtH8yIgLH7Bq35NcngZ2MP4q9//G69T+R5HmA2K0SPcLfvo7OsI3dnQfhvw6/1AyFFSjLAEtF74v4p/fe/gImmLK7M6n9Y34lMpaCRijfB1hSG3JLHKH1ZxWEjNMXHtOPoYjv+idvL9sJmlvfO66BLHDN7i6j9Mn8u8H7V9ev/4mklUA+Qjq2LnMNpdDPYYLdXUPp4yL2l+OFUr4E8hHza/FLzgNeKRNa7ggdEi3mzf6LnuHQ0GFMX0llOa85C+zuPVhe9sRE+MlrSpU/w63IIrXwyXP+SLT9mT4T7O6NSh9O/e8jgRFKUPTyZ1kgl/BtbaaL5RSZYPd1y08QpegEh3Z+XykX/YmK+4/yCH9oF3hu+5P2TXAlfttubJySh4OA6M6h+C0GLU7jdp4ixD8cb9kEs8jvMkHqIVEDpaM/kQADsAiJ+gvEP9CiCXbPWjq8rn05U2WDoa1AtYm4JWsWCJksi+0Im44fibY/ascEu2cnHd4pS00QYQQJ0Z9I6jxAyDjxwhEg17HBBP1X5D9DYGL3jZPwp/+fF4ZjgwlM/bEc8wJCEJEBiE5ZIHR5RGrxW9j+sL5scCV+G7Zvfkk2YLbZvywj+hNJzQA+Mo0CuTLCYIL+q7Kzwe5bhqhvivguNmQfmeO8V0XZQEwGICLqn2aIq4D4x2xfkZsNrsRvwvRNu759XyaIzAaSoj9RTRlgqfBd55niH6LilQmORP2dshlh99zIkOPnrU2RmntswJUJfK8dtyFGu0Jsbty8Je7BwdlS5bXFbzpu+pRGbdY2wvb5h/OtJk0bDnDN7fr8OA8aMdjflxX9iYQagOhkghJDoLbj009pJr7r/+zv5jHD9oXzz8S41+rUBCFiz2gCieInklwC5RZ/SPvAELG9Pzdvfy/MFNvvPPRe+/KCseFwSNmztBwix+uFIjYDEDGWKucYBo2J/qZjR+Y53929547OAjHHTffDeL3U6E8kbBRoSv/MghniXOLnvG7FKHi5ZGw+9DgR7ydNx2v9BYufSLgBiAwmWHMYdEm7VEwFxxK8QaUxa/VtME0gXfxEFRjgjLXFL7Y4TEjsgzCFf+E9FVUYoH/mdj7x2/AMe0a/bwaMZVBIFlhiAosR9i/Jj/5ElRiAiKj/kmcUJVb8qQW8hiFyfGtL3nNiglrET1SRAYgcJogV3dLSJ8UEXSIWZwEXnNecLlWT+IkqMwCRwQSp5wFyv08Mqevt1KXQidrET1ShAYhGJsgxFNpax9eUBZzt487tX6xP/ESVGoAoU5/AJv4U62lC2nAwfHOsOQHH62PP1Sp+oooNQETUfzmiTyBg1MZL6m/FlgVirzOe6KpY/ESVG4DIYIJYgYdEf8EEZQEXjGeBaxc/UQMGIBqZQFqHOKV5TEE8qOSJyAKumv/79YufqBEDEDnKoYGYBV4hAq4sU7Ax1fyNiJ+oIQMQ1bt7Q2qsZVCCvkBL4icSvhx6CWf7+qSM/ksfq1xyLOBerc8JuH6m1vE57b/XlvAHmsoAY66ywdK17RwElj/BWcBBq+InatgARAtKIoGCJqL8KzBN9X7D4idquASaMtvcyvV/nav8CWkbMllnaet8XNJTCrUu/IGmM8AY6RtazUgwqxs7J6BF/ESKMsAY5+ZWqZ6fzZUtAjvtIVlg/109wh9QaYABoxEUGkCj8AdUG2BgvNObFSkGIEpmgv0LlZWFGYABRmxftpRGqYyRykQLDQDhXwMDGJgZoURZ5DoesXRjc4TwTcAADq6MULkB+uchfBswAJPtfSEdZiLWHAZEzwMGiMS0/+cVuY8TzUzQPwfBxwADJGL7EmPxXUID9N+G4FMAA2Rm+4MFxiCi/psQek5gAKAaNWuBADABAwDVwABANTAAUA0MAFQDAwDVwABANTAAUA0MAFQDAwDVwABANTAAUA0MAFQDAwDVwABANTAAUA0MAFQDAwDVwABANTAAUA0MAFQDAwDVwABANTAAUA0MAFTzP4NFJMJX8ObFAAAAAElFTkSuQmCC';
 
 function escapeHtml(str){
   return (str||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 }
 
-function ensureSpace(doc, y, needed){
+function ensureSpace(doc, cursor, needed){
   const pageHeight = doc.internal.pageSize.getHeight();
-  if(y + needed > pageHeight - 15){
+  if(cursor.y + needed > pageHeight - 16){
     doc.addPage();
-    return 20;
+    cursor.y = 20;
   }
-  return y;
 }
 
-function pdfHeading(doc, cursor, text){
-  cursor.y = ensureSpace(doc, cursor.y, 14);
+// desenha um check em vetor (não depende de glifo de fonte, sempre renderiza igual)
+function drawCheck(doc, x, y){
+  doc.setDrawColor(15,157,120);
+  doc.setLineWidth(0.6);
+  doc.line(x, y, x + 0.9, y + 1.0);
+  doc.line(x + 0.9, y + 1.0, x + 2.5, y - 1.6);
+}
+
+function pdfHeading(doc, cursor, num, title){
+  ensureSpace(doc, cursor, 16);
+  const r = 3.6;
+  const cx = cursor.margin + r;
+  const cy = cursor.y - 1.3;
+  doc.setFillColor(224,242,254);
+  doc.circle(cx, cy, r, 'F');
+  doc.setDrawColor(34,211,238);
+  doc.setLineWidth(0.3);
+  doc.circle(cx, cy, r, 'S');
   doc.setFont('helvetica','bold');
-  doc.setFontSize(12);
+  doc.setFontSize(9);
   doc.setTextColor(30,58,138);
-  doc.text(text, cursor.margin, cursor.y);
-  cursor.y += 2;
-  doc.setDrawColor(220,220,220);
+  doc.text(String(num), cx, cy + 1.1, { align:'center' });
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(12.5);
+  doc.setTextColor(15,23,42);
+  doc.text(title, cx + r + 4, cursor.y);
+
+  cursor.y += 3.5;
+  doc.setDrawColor(226,232,240);
+  doc.setLineWidth(0.2);
   doc.line(cursor.margin, cursor.y, cursor.pageWidth - cursor.margin, cursor.y);
   cursor.y += 7;
 }
 
-function pdfChecklistSection(doc, cursor, title, items, originalLabels, extra){
-  pdfHeading(doc, cursor, title);
+function pdfEmptyNote(doc, cursor, text){
+  doc.setFont('helvetica','italic');
+  doc.setFontSize(9.5);
+  doc.setTextColor(148,163,184);
+  doc.text(text, cursor.margin, cursor.y);
+  cursor.y += 9;
+}
+
+function pdfChecklistItem(doc, cursor, label, obs){
+  ensureSpace(doc, cursor, 8);
+  drawCheck(doc, cursor.margin + 0.5, cursor.y - 1.4);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10.3);
+  doc.setTextColor(30,41,59);
+  const lines = doc.splitTextToSize(label, cursor.pageWidth - cursor.margin*2 - 8);
+  doc.text(lines, cursor.margin + 6, cursor.y);
+  cursor.y += lines.length * 5;
+  if(obs){
+    ensureSpace(doc, cursor, 6);
+    doc.setFont('helvetica','italic');
+    doc.setFontSize(9);
+    doc.setTextColor(120,130,145);
+    const obsLines = doc.splitTextToSize(obs, cursor.pageWidth - cursor.margin*2 - 12);
+    doc.text(obsLines, cursor.margin + 9, cursor.y);
+    cursor.y += obsLines.length * 4.5;
+  }
+}
+
+function pdfChecklistSection(doc, cursor, num, title, items, originalLabels, extra){
+  pdfHeading(doc, cursor, num, title);
   const checked = items.filter(i=>i.checked);
   const hasExtra = extra && extra.some(e=>e.trim());
 
   if(checked.length===0 && !hasExtra){
-    doc.setFont('helvetica','italic');
-    doc.setFontSize(10);
-    doc.setTextColor(153,153,153);
-    doc.text('Nenhum item marcado.', cursor.margin, cursor.y);
-    cursor.y += 9;
+    pdfEmptyNote(doc, cursor, 'Nenhum item marcado.');
     return;
   }
-
   checked.forEach(it=>{
     const idx = items.indexOf(it);
-    const label = originalLabels[idx];
-    cursor.y = ensureSpace(doc, cursor.y, 8);
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(10.5);
-    doc.setTextColor(20,20,20);
-    const lines = doc.splitTextToSize('\u2713  ' + label, cursor.pageWidth - cursor.margin*2 - 4);
-    doc.text(lines, cursor.margin + 2, cursor.y);
-    cursor.y += lines.length * 5;
-    if(it.obs){
-      cursor.y = ensureSpace(doc, cursor.y, 6);
-      doc.setFont('helvetica','italic');
-      doc.setFontSize(9);
-      doc.setTextColor(120,120,120);
-      const obsLines = doc.splitTextToSize(it.obs, cursor.pageWidth - cursor.margin*2 - 8);
-      doc.text(obsLines, cursor.margin + 7, cursor.y);
-      cursor.y += obsLines.length * 4.5;
-    }
+    pdfChecklistItem(doc, cursor, originalLabels[idx], it.obs);
   });
-
   if(hasExtra){
-    extra.filter(e=>e.trim()).forEach(e=>{
-      cursor.y = ensureSpace(doc, cursor.y, 8);
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(10.5);
-      doc.setTextColor(20,20,20);
-      const lines = doc.splitTextToSize('\u2713  ' + e, cursor.pageWidth - cursor.margin*2 - 4);
-      doc.text(lines, cursor.margin + 2, cursor.y);
-      cursor.y += lines.length * 5;
-    });
+    extra.filter(e=>e.trim()).forEach(e=> pdfChecklistItem(doc, cursor, e, null));
   }
-  cursor.y += 5;
+  cursor.y += 4;
 }
 
-function pdfParagraphSection(doc, cursor, title, text){
-  pdfHeading(doc, cursor, title);
+function pdfParagraphSection(doc, cursor, num, title, text){
+  pdfHeading(doc, cursor, num, title);
   const isEmpty = !text;
-  doc.setFont('helvetica', isEmpty ? 'italic' : 'normal');
-  doc.setFontSize(10.5);
-  if(isEmpty) doc.setTextColor(153,153,153); else doc.setTextColor(20,20,20);
-  const lines = doc.splitTextToSize(text || 'Não preenchido.', cursor.pageWidth - cursor.margin*2);
+  if(isEmpty){
+    pdfEmptyNote(doc, cursor, 'Não preenchido.');
+    return;
+  }
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10.3);
+  doc.setTextColor(30,41,59);
+  const lines = doc.splitTextToSize(text, cursor.pageWidth - cursor.margin*2);
   lines.forEach(line=>{
-    cursor.y = ensureSpace(doc, cursor.y, 6);
+    ensureSpace(doc, cursor, 6);
     doc.text(line, cursor.margin, cursor.y);
     cursor.y += 5;
   });
   cursor.y += 4;
+}
+
+function pdfMaturitySection(doc, cursor){
+  pdfHeading(doc, cursor, 4, 'Maturidade em dados');
+  const avg = state.maturidade.reduce((a,b)=>a+b,0) / state.maturidade.length;
+  const rounded = Math.round(avg*10)/10;
+  const tagLabel = avg<1.5 ? 'Crítico' : avg<2.5 ? 'Baixa maturidade' : avg<3.5 ? 'Em desenvolvimento' : 'Madura';
+  const tagColor = avg<1.5 ? [225,29,72] : avg<2.5 ? [217,119,6] : avg<3.5 ? [8,145,178] : [5,150,105];
+
+  const cardH = 24;
+  ensureSpace(doc, cursor, cardH + 4);
+  const cardY = cursor.y;
+  const cardW = cursor.pageWidth - cursor.margin*2;
+  doc.setFillColor(240,249,255);
+  doc.roundedRect(cursor.margin, cardY, cardW, cardH, 3, 3, 'F');
+  doc.setDrawColor(191,219,254);
+  doc.setLineWidth(0.25);
+  doc.roundedRect(cursor.margin, cardY, cardW, cardH, 3, 3, 'S');
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(25);
+  doc.setTextColor(30,58,138);
+  doc.text(rounded.toFixed(1) + '/5', cursor.margin + 6, cardY + 16);
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(9);
+  const tagW = doc.getTextWidth(tagLabel) + 8;
+  const pillX = cursor.margin + cardW - tagW - 6;
+  const pillY = cardY + cardH/2 - 4;
+  doc.setDrawColor(tagColor[0], tagColor[1], tagColor[2]);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(pillX, pillY, tagW, 8, 4, 4, 'S');
+  doc.setTextColor(tagColor[0], tagColor[1], tagColor[2]);
+  doc.text(tagLabel, pillX + tagW/2, pillY + 5.4, { align:'center' });
+
+  cursor.y = cardY + cardH + 9;
+
+  PILARES_MATURIDADE.forEach((p,i)=>{
+    ensureSpace(doc, cursor, 8);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(51,65,85);
+    doc.text(p, cursor.margin, cursor.y);
+
+    const barX = cursor.margin + 60;
+    const barW = cursor.pageWidth - cursor.margin - barX - 14;
+    const barH = 3;
+    doc.setFillColor(226,232,240);
+    doc.roundedRect(barX, cursor.y - 2.6, barW, barH, 1, 1, 'F');
+    const fillW = barW * (state.maturidade[i] / 5);
+    if(fillW > 0.3){
+      doc.setFillColor(34,211,238);
+      doc.roundedRect(barX, cursor.y - 2.6, fillW, barH, 1, 1, 'F');
+    }
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.setTextColor(30,58,138);
+    doc.text(state.maturidade[i] + '/5', cursor.pageWidth - cursor.margin, cursor.y, { align:'right' });
+    cursor.y += 7;
+  });
+  cursor.y += 4;
+}
+
+function pdfGainsSection(doc, cursor){
+  pdfHeading(doc, cursor, 7, 'Ganhos estimados');
+  const antes = parseFloat(state.horasAntes) || 0;
+  const depois = parseFloat(state.horasDepois) || 0;
+
+  if(antes || depois){
+    const economiaMes = Math.round(Math.max(0, antes - depois) * 4.33 * 10) / 10;
+    ensureSpace(doc, cursor, 22);
+    const boxH = 18;
+    doc.setFillColor(236,253,245);
+    doc.roundedRect(cursor.margin, cursor.y - 6, cursor.pageWidth - cursor.margin*2, boxH, 3, 3, 'F');
+    doc.setDrawColor(167,243,208);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(cursor.margin, cursor.y - 6, cursor.pageWidth - cursor.margin*2, boxH, 3, 3, 'S');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(15);
+    doc.setTextColor(5,150,105);
+    doc.text(economiaMes + ' h/mês economizadas', cursor.margin + 5, cursor.y + 3);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(100,116,139);
+    doc.text(`de ${antes}h para ${depois}h por semana`, cursor.margin + 5, cursor.y + 9);
+    cursor.y += boxH + 6;
+  } else {
+    pdfEmptyNote(doc, cursor, 'Não preenchido.');
+  }
+
+  if(state.ganhosObs){
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(10);
+    doc.setTextColor(30,41,59);
+    const gLines = doc.splitTextToSize(state.ganhosObs, cursor.pageWidth - cursor.margin*2);
+    gLines.forEach(line=>{
+      ensureSpace(doc, cursor, 6);
+      doc.text(line, cursor.margin, cursor.y);
+      cursor.y += 5;
+    });
+  }
+  cursor.y += 4;
+}
+
+function pdfRoadmapSection(doc, cursor){
+  pdfHeading(doc, cursor, 8, 'Roadmap sugerido');
+  const roadmapChecked = state.roadmap.filter(r=>r.checked);
+  if(roadmapChecked.length===0){
+    pdfEmptyNote(doc, cursor, 'Nenhuma fase marcada.');
+    return;
+  }
+  roadmapChecked.forEach(r=>{
+    const idx = state.roadmap.indexOf(r);
+    pdfChecklistItem(doc, cursor, FASES_ROADMAP[idx], r.obs);
+  });
+  cursor.y += 4;
+}
+
+function pdfFooters(doc, cursor){
+  const total = doc.internal.getNumberOfPages();
+  for(let p=1; p<=total; p++){
+    doc.setPage(p);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8);
+    doc.setTextColor(148,163,184);
+    doc.text('gauss data · gauss scan', cursor.margin, doc.internal.pageSize.getHeight() - 8);
+    doc.text(`${p}/${total}`, cursor.pageWidth - cursor.margin, doc.internal.pageSize.getHeight() - 8, { align:'right' });
+  }
 }
 
 function gerarPDF(){
@@ -984,121 +1138,57 @@ function gerarPDF(){
   try{
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit:'mm', format:'a4' });
-    const cursor = { y:20, margin:15, pageWidth: doc.internal.pageSize.getWidth() };
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const cursor = { y:44, margin:15, pageWidth };
 
+    // ---- Cabeçalho com gradiente e logo ----
+    const headerH = 32;
+    const steps = 50;
+    for(let i=0; i<steps; i++){
+      const t = i/steps;
+      const r = Math.round(37 + (34-37)*t);
+      const g = Math.round(99 + (211-99)*t);
+      const b = Math.round(235 + (238-235)*t);
+      doc.setFillColor(r,g,b);
+      doc.rect(pageWidth*t, 0, pageWidth/steps + 0.5, headerH, 'F');
+    }
+    try{ doc.addImage(LOGO_PNG_B64, 'PNG', pageWidth - 27, 8, 15, 15); }catch(e){}
     doc.setFont('helvetica','bold');
     doc.setFontSize(19);
-    doc.setTextColor(13,20,36);
-    doc.text('Gauss Scan — Diagnóstico de Dados', cursor.margin, cursor.y);
-    cursor.y += 7;
+    doc.setTextColor(255,255,255);
+    doc.text('Gauss Scan', cursor.margin, 16);
     doc.setFont('helvetica','normal');
-    doc.setFontSize(10);
-    doc.setTextColor(100,100,100);
-    const subtitle = (state.empresaNome || 'Cliente sem nome') + (state.dataReuniao ? '  ·  ' + state.dataReuniao : '');
-    doc.text(subtitle, cursor.margin, cursor.y);
-    cursor.y += 10;
+    doc.setFontSize(10.5);
+    doc.setTextColor(224,242,254);
+    doc.text('Diagnóstico de Dados', cursor.margin, 24);
 
-    pdfChecklistSection(doc, cursor, '1. Sobre a empresa', state.empresaRespostas, EMPRESA_PERGUNTAS);
-    pdfChecklistSection(doc, cursor, '2. Fontes de dados identificadas', state.fontesRespostas, FONTES_DADOS);
-    pdfParagraphSection(doc, cursor, '3. Processos e gargalos', state.processoTexto);
-
-    // Maturidade
-    pdfHeading(doc, cursor, '4. Maturidade em dados');
-    const avg = state.maturidade.reduce((a,b)=>a+b,0) / state.maturidade.length;
-    const rounded = Math.round(avg*10)/10;
-    const tagLabel = avg<1.5 ? 'Crítico' : avg<2.5 ? 'Baixa maturidade' : avg<3.5 ? 'Em desenvolvimento' : 'Madura';
+    // ---- Linha com cliente e data ----
     doc.setFont('helvetica','bold');
-    doc.setFontSize(24);
-    doc.setTextColor(30,58,138);
-    doc.text(rounded.toFixed(1) + '/5', cursor.margin, cursor.y + 6);
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(10);
-    doc.setTextColor(100,100,100);
-    doc.text(tagLabel, cursor.margin, cursor.y + 13);
-    cursor.y += 20;
-    PILARES_MATURIDADE.forEach((p,i)=>{
-      cursor.y = ensureSpace(doc, cursor.y, 7);
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(10.5);
-      doc.setTextColor(20,20,20);
-      doc.text(p, cursor.margin, cursor.y);
-      doc.setFont('helvetica','bold');
-      doc.setTextColor(30,58,138);
-      doc.text(state.maturidade[i] + '/5', cursor.pageWidth - cursor.margin - 12, cursor.y);
-      cursor.y += 6;
-    });
-    cursor.y += 5;
-
-    pdfChecklistSection(doc, cursor, '5. Problemas encontrados', state.problemas, PROBLEMAS_COMUNS, state.problemasExtra);
-    pdfChecklistSection(doc, cursor, '6. Oportunidades', state.oportunidades, OPORTUNIDADES_COMUNS, state.oportunidadesExtra);
-
-    // Ganhos
-    pdfHeading(doc, cursor, '7. Ganhos estimados');
-    const antes = parseFloat(state.horasAntes) || 0;
-    const depois = parseFloat(state.horasDepois) || 0;
-    if(antes || depois){
-      const economiaMes = Math.round(Math.max(0, antes-depois) * 4.33 * 10) / 10;
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(15);
-      doc.setTextColor(15,157,120);
-      doc.text(economiaMes + ' h/mês economizadas', cursor.margin, cursor.y);
-      cursor.y += 6;
+    doc.setFontSize(12);
+    doc.setTextColor(15,23,42);
+    doc.text(state.empresaNome || 'Cliente sem nome', cursor.margin, cursor.y - 2);
+    if(state.dataReuniao){
       doc.setFont('helvetica','normal');
       doc.setFontSize(9.5);
-      doc.setTextColor(100,100,100);
-      doc.text(`de ${antes}h para ${depois}h por semana`, cursor.margin, cursor.y);
-      cursor.y += 7;
-    } else {
-      doc.setFont('helvetica','italic');
-      doc.setFontSize(10);
-      doc.setTextColor(153,153,153);
-      doc.text('Não preenchido.', cursor.margin, cursor.y);
-      cursor.y += 7;
+      doc.setTextColor(100,116,139);
+      doc.text(state.dataReuniao, pageWidth - cursor.margin, cursor.y - 2, { align:'right' });
     }
-    if(state.ganhosObs){
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(10);
-      doc.setTextColor(20,20,20);
-      const gLines = doc.splitTextToSize(state.ganhosObs, cursor.pageWidth - cursor.margin*2);
-      gLines.forEach(line=>{
-        cursor.y = ensureSpace(doc, cursor.y, 6);
-        doc.text(line, cursor.margin, cursor.y);
-        cursor.y += 5;
-      });
-    }
-    cursor.y += 4;
+    doc.setDrawColor(226,232,240);
+    doc.setLineWidth(0.3);
+    doc.line(cursor.margin, cursor.y + 1, pageWidth - cursor.margin, cursor.y + 1);
+    cursor.y += 9;
 
-    // Roadmap
-    pdfHeading(doc, cursor, '8. Roadmap sugerido');
-    const roadmapChecked = state.roadmap.filter(r=>r.checked);
-    if(roadmapChecked.length===0){
-      doc.setFont('helvetica','italic');
-      doc.setFontSize(10);
-      doc.setTextColor(153,153,153);
-      doc.text('Nenhuma fase marcada.', cursor.margin, cursor.y);
-      cursor.y += 9;
-    } else {
-      roadmapChecked.forEach(r=>{
-        const idx = state.roadmap.indexOf(r);
-        cursor.y = ensureSpace(doc, cursor.y, 7);
-        doc.setFont('helvetica','normal');
-        doc.setFontSize(10.5);
-        doc.setTextColor(20,20,20);
-        doc.text('\u2713  ' + FASES_ROADMAP[idx], cursor.margin + 2, cursor.y);
-        cursor.y += 5;
-        if(r.obs){
-          doc.setFont('helvetica','italic');
-          doc.setFontSize(9);
-          doc.setTextColor(120,120,120);
-          const oLines = doc.splitTextToSize(r.obs, cursor.pageWidth - cursor.margin*2 - 8);
-          doc.text(oLines, cursor.margin + 7, cursor.y);
-          cursor.y += oLines.length * 4.5;
-        }
-      });
-    }
-    cursor.y += 5;
+    pdfChecklistSection(doc, cursor, 1, 'Sobre a empresa', state.empresaRespostas, EMPRESA_PERGUNTAS);
+    pdfChecklistSection(doc, cursor, 2, 'Fontes de dados identificadas', state.fontesRespostas, FONTES_DADOS);
+    pdfParagraphSection(doc, cursor, 3, 'Processos e gargalos', state.processoTexto);
+    pdfMaturitySection(doc, cursor);
+    pdfChecklistSection(doc, cursor, 5, 'Problemas encontrados', state.problemas, PROBLEMAS_COMUNS, state.problemasExtra);
+    pdfChecklistSection(doc, cursor, 6, 'Oportunidades', state.oportunidades, OPORTUNIDADES_COMUNS, state.oportunidadesExtra);
+    pdfGainsSection(doc, cursor);
+    pdfRoadmapSection(doc, cursor);
+    pdfParagraphSection(doc, cursor, 9, 'Próximos passos', state.proximosPassos);
 
-    pdfParagraphSection(doc, cursor, '9. Próximos passos', state.proximosPassos);
+    pdfFooters(doc, cursor);
 
     const slug = slugify(state.empresaNome) || 'diagnostico';
     doc.save(`gauss-scan-${slug}.pdf`);
