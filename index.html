@@ -313,32 +313,6 @@
     margin-top:10px;min-height:14px;
   }
   .save-status.ok{color:var(--good);}
-
-  /* ---------- PDF REPORT (off-screen render target for html2pdf) ---------- */
-  .pdf-report{
-    position:fixed;
-    top:0;
-    left:-9999px;
-    width:760px;
-    background:#fff;
-    color:#111;
-    font-family:'Inter',Arial,sans-serif;
-    padding:24px;
-  }
-  .pdf-report h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;color:#0d1424;}
-  .pdf-report .pr-sub{color:#666;font-size:12px;margin-bottom:18px;}
-  .pdf-report h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:22px 0 8px;color:#1e3a8a;border-bottom:1px solid #ddd;padding-bottom:4px;}
-  .pdf-report .pr-item{font-size:12.5px;margin:4px 0;padding-left:16px;position:relative;}
-  .pdf-report .pr-item:before{content:"\2713";position:absolute;left:0;color:#22a094;font-weight:700;}
-  .pdf-report .pr-obs{color:#666;font-size:11.5px;margin-left:16px;font-style:italic;}
-  .pdf-report .pr-score{font-size:34px;font-weight:700;color:#1e3a8a;font-family:'Space Grotesk',sans-serif;}
-  .pdf-report .pr-score-tag{font-size:12px;color:#666;margin-bottom:10px;}
-  .pdf-report .pr-pillars{margin-top:6px;}
-  .pdf-report .pr-pillar-row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px solid #eee;max-width:340px;}
-  .pdf-report .pr-pillar-val{color:#1e3a8a;font-weight:700;}
-  .pdf-report .pr-empty{color:#999;font-size:12px;font-style:italic;}
-  .pdf-report .pr-text{font-size:12.5px;line-height:1.5;white-space:pre-wrap;}
-  .pdf-report .pr-gain{font-size:20px;font-weight:700;color:#0f9d78;}
 </style>
 </head>
 <body>
@@ -516,9 +490,7 @@
   <footer class="no-print">gauss data · gauss scan · dados salvos neste aparelho (localStorage)</footer>
 </div>
 
-<div id="pdfRenderArea" class="pdf-report"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
 // ---------------- DATA MODEL ----------------
@@ -908,110 +880,239 @@ async function importarBackup(event){
   event.target.value = '';
 }
 
-// ---------------- PDF / RELATÓRIO IMPRIMÍVEL ----------------
+// ---------------- PDF (gerado em texto puro via jsPDF — sem screenshot de tela) ----------------
 
 function escapeHtml(str){
   return (str||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 }
 
-function buildPrintReport(){
-  const avg = state.maturidade.reduce((a,b)=>a+b,0) / state.maturidade.length;
-  const rounded = Math.round(avg*10)/10;
-  let tagLabel = avg<1.5?'Crítico':avg<2.5?'Baixa maturidade':avg<3.5?'Em desenvolvimento':'Madura';
-
-  const listBlock = (label, items, extra) => {
-    const checked = items.filter(i=>i.checked);
-    let html = `<h2>${label}</h2>`;
-    if(checked.length===0 && (!extra || extra.every(e=>!e.trim()))){
-      html += `<div class="pr-empty">Nenhum item marcado.</div>`;
-      return html;
-    }
-    checked.forEach((it, idx)=>{
-      const originalLabel = items === state.problemas ? PROBLEMAS_COMUNS[items.indexOf(it)]
-        : items === state.oportunidades ? OPORTUNIDADES_COMUNS[items.indexOf(it)]
-        : items === state.empresaRespostas ? EMPRESA_PERGUNTAS[items.indexOf(it)]
-        : items === state.fontesRespostas ? FONTES_DADOS[items.indexOf(it)] : '';
-      html += `<div class="pr-item">${escapeHtml(originalLabel)}</div>`;
-      if(it.obs) html += `<div class="pr-obs">${escapeHtml(it.obs)}</div>`;
-    });
-    if(extra){
-      extra.filter(e=>e.trim()).forEach(e=> html += `<div class="pr-item">${escapeHtml(e)}</div>`);
-    }
-    return html;
-  };
-
-  const antes = parseFloat(state.horasAntes)||0;
-  const depois = parseFloat(state.horasDepois)||0;
-  const economiaMes = Math.round(Math.max(0,antes-depois) * 4.33 * 10)/10;
-
-  let html = `
-    <h1>Gauss Scan — Diagnóstico de Dados</h1>
-    <div class="pr-sub">${escapeHtml(state.empresaNome || 'Cliente sem nome')} ${state.dataReuniao ? '· '+state.dataReuniao : ''}</div>
-
-    ${listBlock('1. Sobre a empresa', state.empresaRespostas)}
-    ${listBlock('2. Fontes de dados identificadas', state.fontesRespostas)}
-
-    <h2>3. Processos e gargalos</h2>
-    <div class="pr-text">${state.processoTexto ? escapeHtml(state.processoTexto) : '<span class="pr-empty">Não preenchido.</span>'}</div>
-
-    <h2>4. Maturidade em dados</h2>
-    <div class="pr-score">${rounded.toFixed(1)}/5</div>
-    <div class="pr-score-tag">${tagLabel}</div>
-    <div class="pr-pillars">${PILARES_MATURIDADE.map((p,i)=>`<div class="pr-pillar-row"><span>${p}</span><span class="pr-pillar-val">${state.maturidade[i]}/5</span></div>`).join('')}</div>
-
-    ${listBlock('5. Problemas encontrados', state.problemas, state.problemasExtra)}
-    ${listBlock('6. Oportunidades', state.oportunidades, state.oportunidadesExtra)}
-
-    <h2>7. Ganhos estimados</h2>
-    ${(antes||depois) ? `<div class="pr-gain">${economiaMes} h/mês economizadas</div><div class="pr-obs" style="margin-left:0">de ${antes}h para ${depois}h por semana</div>` : '<div class="pr-empty">Não preenchido.</div>'}
-    ${state.ganhosObs ? `<div class="pr-text" style="margin-top:6px">${escapeHtml(state.ganhosObs)}</div>` : ''}
-
-    <h2>8. Roadmap sugerido</h2>
-    ${state.roadmap.some(r=>r.checked) ? state.roadmap.filter(r=>r.checked).map((r,i)=>{
-        const idx = state.roadmap.indexOf(r);
-        return `<div class="pr-item">${FASES_ROADMAP[idx]}${r.obs?` — <span class="pr-obs" style="margin-left:0">${escapeHtml(r.obs)}</span>`:''}</div>`;
-      }).join('') : '<div class="pr-empty">Nenhuma fase marcada.</div>'}
-
-    <h2>9. Próximos passos</h2>
-    <div class="pr-text">${state.proximosPassos ? escapeHtml(state.proximosPassos) : '<span class="pr-empty">Não preenchido.</span>'}</div>
-  `;
-  return html;
+function ensureSpace(doc, y, needed){
+  const pageHeight = doc.internal.pageSize.getHeight();
+  if(y + needed > pageHeight - 15){
+    doc.addPage();
+    return 20;
+  }
+  return y;
 }
 
-function exportarPDF(){
-  const area = document.getElementById('pdfRenderArea');
-  area.innerHTML = buildPrintReport();
+function pdfHeading(doc, cursor, text){
+  cursor.y = ensureSpace(doc, cursor.y, 14);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(12);
+  doc.setTextColor(30,58,138);
+  doc.text(text, cursor.margin, cursor.y);
+  cursor.y += 2;
+  doc.setDrawColor(220,220,220);
+  doc.line(cursor.margin, cursor.y, cursor.pageWidth - cursor.margin, cursor.y);
+  cursor.y += 7;
+}
+
+function pdfChecklistSection(doc, cursor, title, items, originalLabels, extra){
+  pdfHeading(doc, cursor, title);
+  const checked = items.filter(i=>i.checked);
+  const hasExtra = extra && extra.some(e=>e.trim());
+
+  if(checked.length===0 && !hasExtra){
+    doc.setFont('helvetica','italic');
+    doc.setFontSize(10);
+    doc.setTextColor(153,153,153);
+    doc.text('Nenhum item marcado.', cursor.margin, cursor.y);
+    cursor.y += 9;
+    return;
+  }
+
+  checked.forEach(it=>{
+    const idx = items.indexOf(it);
+    const label = originalLabels[idx];
+    cursor.y = ensureSpace(doc, cursor.y, 8);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(10.5);
+    doc.setTextColor(20,20,20);
+    const lines = doc.splitTextToSize('\u2713  ' + label, cursor.pageWidth - cursor.margin*2 - 4);
+    doc.text(lines, cursor.margin + 2, cursor.y);
+    cursor.y += lines.length * 5;
+    if(it.obs){
+      cursor.y = ensureSpace(doc, cursor.y, 6);
+      doc.setFont('helvetica','italic');
+      doc.setFontSize(9);
+      doc.setTextColor(120,120,120);
+      const obsLines = doc.splitTextToSize(it.obs, cursor.pageWidth - cursor.margin*2 - 8);
+      doc.text(obsLines, cursor.margin + 7, cursor.y);
+      cursor.y += obsLines.length * 4.5;
+    }
+  });
+
+  if(hasExtra){
+    extra.filter(e=>e.trim()).forEach(e=>{
+      cursor.y = ensureSpace(doc, cursor.y, 8);
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(10.5);
+      doc.setTextColor(20,20,20);
+      const lines = doc.splitTextToSize('\u2713  ' + e, cursor.pageWidth - cursor.margin*2 - 4);
+      doc.text(lines, cursor.margin + 2, cursor.y);
+      cursor.y += lines.length * 5;
+    });
+  }
+  cursor.y += 5;
+}
+
+function pdfParagraphSection(doc, cursor, title, text){
+  pdfHeading(doc, cursor, title);
+  const isEmpty = !text;
+  doc.setFont('helvetica', isEmpty ? 'italic' : 'normal');
+  doc.setFontSize(10.5);
+  if(isEmpty) doc.setTextColor(153,153,153); else doc.setTextColor(20,20,20);
+  const lines = doc.splitTextToSize(text || 'Não preenchido.', cursor.pageWidth - cursor.margin*2);
+  lines.forEach(line=>{
+    cursor.y = ensureSpace(doc, cursor.y, 6);
+    doc.text(line, cursor.margin, cursor.y);
+    cursor.y += 5;
+  });
+  cursor.y += 4;
+}
+
+function gerarPDF(){
+  if(typeof window.jspdf === 'undefined'){
+    alert('Não foi possível carregar o gerador de PDF. Verifique sua conexão com a internet e tente de novo.');
+    return;
+  }
   const btn = document.getElementById('btnExportarPDF');
   const originalLabel = btn.textContent;
   btn.textContent = 'Gerando PDF...';
   btn.disabled = true;
 
-  const finish = () => { btn.textContent = originalLabel; btn.disabled = false; area.innerHTML = ''; };
+  try{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+    const cursor = { y:20, margin:15, pageWidth: doc.internal.pageSize.getWidth() };
 
-  if(typeof html2pdf === 'undefined'){
-    alert('Não foi possível carregar o gerador de PDF (verifique sua conexão) e tente novamente.');
-    finish();
-    return;
-  }
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(19);
+    doc.setTextColor(13,20,36);
+    doc.text('Gauss Scan — Diagnóstico de Dados', cursor.margin, cursor.y);
+    cursor.y += 7;
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(10);
+    doc.setTextColor(100,100,100);
+    const subtitle = (state.empresaNome || 'Cliente sem nome') + (state.dataReuniao ? '  ·  ' + state.dataReuniao : '');
+    doc.text(subtitle, cursor.margin, cursor.y);
+    cursor.y += 10;
 
-  const slug = slugify(state.empresaNome) || 'diagnostico';
-  html2pdf()
-    .set({
-      margin: 10,
-      filename: `gauss-scan-${slug}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'] }
-    })
-    .from(area)
-    .save()
-    .then(finish)
-    .catch((err) => {
-      alert('Erro ao gerar o PDF. Tente novamente.');
-      finish();
+    pdfChecklistSection(doc, cursor, '1. Sobre a empresa', state.empresaRespostas, EMPRESA_PERGUNTAS);
+    pdfChecklistSection(doc, cursor, '2. Fontes de dados identificadas', state.fontesRespostas, FONTES_DADOS);
+    pdfParagraphSection(doc, cursor, '3. Processos e gargalos', state.processoTexto);
+
+    // Maturidade
+    pdfHeading(doc, cursor, '4. Maturidade em dados');
+    const avg = state.maturidade.reduce((a,b)=>a+b,0) / state.maturidade.length;
+    const rounded = Math.round(avg*10)/10;
+    const tagLabel = avg<1.5 ? 'Crítico' : avg<2.5 ? 'Baixa maturidade' : avg<3.5 ? 'Em desenvolvimento' : 'Madura';
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(24);
+    doc.setTextColor(30,58,138);
+    doc.text(rounded.toFixed(1) + '/5', cursor.margin, cursor.y + 6);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(10);
+    doc.setTextColor(100,100,100);
+    doc.text(tagLabel, cursor.margin, cursor.y + 13);
+    cursor.y += 20;
+    PILARES_MATURIDADE.forEach((p,i)=>{
+      cursor.y = ensureSpace(doc, cursor.y, 7);
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(10.5);
+      doc.setTextColor(20,20,20);
+      doc.text(p, cursor.margin, cursor.y);
+      doc.setFont('helvetica','bold');
+      doc.setTextColor(30,58,138);
+      doc.text(state.maturidade[i] + '/5', cursor.pageWidth - cursor.margin - 12, cursor.y);
+      cursor.y += 6;
     });
+    cursor.y += 5;
+
+    pdfChecklistSection(doc, cursor, '5. Problemas encontrados', state.problemas, PROBLEMAS_COMUNS, state.problemasExtra);
+    pdfChecklistSection(doc, cursor, '6. Oportunidades', state.oportunidades, OPORTUNIDADES_COMUNS, state.oportunidadesExtra);
+
+    // Ganhos
+    pdfHeading(doc, cursor, '7. Ganhos estimados');
+    const antes = parseFloat(state.horasAntes) || 0;
+    const depois = parseFloat(state.horasDepois) || 0;
+    if(antes || depois){
+      const economiaMes = Math.round(Math.max(0, antes-depois) * 4.33 * 10) / 10;
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(15);
+      doc.setTextColor(15,157,120);
+      doc.text(economiaMes + ' h/mês economizadas', cursor.margin, cursor.y);
+      cursor.y += 6;
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(100,100,100);
+      doc.text(`de ${antes}h para ${depois}h por semana`, cursor.margin, cursor.y);
+      cursor.y += 7;
+    } else {
+      doc.setFont('helvetica','italic');
+      doc.setFontSize(10);
+      doc.setTextColor(153,153,153);
+      doc.text('Não preenchido.', cursor.margin, cursor.y);
+      cursor.y += 7;
+    }
+    if(state.ganhosObs){
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(10);
+      doc.setTextColor(20,20,20);
+      const gLines = doc.splitTextToSize(state.ganhosObs, cursor.pageWidth - cursor.margin*2);
+      gLines.forEach(line=>{
+        cursor.y = ensureSpace(doc, cursor.y, 6);
+        doc.text(line, cursor.margin, cursor.y);
+        cursor.y += 5;
+      });
+    }
+    cursor.y += 4;
+
+    // Roadmap
+    pdfHeading(doc, cursor, '8. Roadmap sugerido');
+    const roadmapChecked = state.roadmap.filter(r=>r.checked);
+    if(roadmapChecked.length===0){
+      doc.setFont('helvetica','italic');
+      doc.setFontSize(10);
+      doc.setTextColor(153,153,153);
+      doc.text('Nenhuma fase marcada.', cursor.margin, cursor.y);
+      cursor.y += 9;
+    } else {
+      roadmapChecked.forEach(r=>{
+        const idx = state.roadmap.indexOf(r);
+        cursor.y = ensureSpace(doc, cursor.y, 7);
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(10.5);
+        doc.setTextColor(20,20,20);
+        doc.text('\u2713  ' + FASES_ROADMAP[idx], cursor.margin + 2, cursor.y);
+        cursor.y += 5;
+        if(r.obs){
+          doc.setFont('helvetica','italic');
+          doc.setFontSize(9);
+          doc.setTextColor(120,120,120);
+          const oLines = doc.splitTextToSize(r.obs, cursor.pageWidth - cursor.margin*2 - 8);
+          doc.text(oLines, cursor.margin + 7, cursor.y);
+          cursor.y += oLines.length * 4.5;
+        }
+      });
+    }
+    cursor.y += 5;
+
+    pdfParagraphSection(doc, cursor, '9. Próximos passos', state.proximosPassos);
+
+    const slug = slugify(state.empresaNome) || 'diagnostico';
+    doc.save(`gauss-scan-${slug}.pdf`);
+  }catch(err){
+    console.error(err);
+    alert('Erro ao gerar o PDF: ' + (err && err.message ? err.message : err));
+  }finally{
+    btn.textContent = originalLabel;
+    btn.disabled = false;
+  }
 }
+
+// mantém compatibilidade com o botão existente
+function exportarPDF(){ gerarPDF(); }
 
 // ---------------- SERVICE WORKER (instalação como app) ----------------
 if('serviceWorker' in navigator){
