@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gauss Scan — Diagnóstico</title>
+<meta name="theme-color" content="#060a14">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{position:absolute;top:0;left:0;width:100%;}
+    .no-print{display:none !important;}
+  }
+  #printArea{display:none;}
+  #printArea.active{display:block;}
+  #printArea{background:#fff;color:#111;font-family:'Inter',sans-serif;padding:20px;}
+  #printArea h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;color:#0d1424;}
+  #printArea .pr-sub{color:#666;font-size:12px;margin-bottom:18px;}
+  #printArea h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:22px 0 8px;color:#1e3a8a;border-bottom:1px solid #ddd;padding-bottom:4px;}
+  #printArea .pr-item{font-size:12.5px;margin:4px 0;padding-left:14px;position:relative;}
+  #printArea .pr-item:before{content:"✓";position:absolute;left:0;color:#22a094;font-weight:700;}
+  #printArea .pr-obs{color:#666;font-size:11.5px;margin-left:14px;font-style:italic;}
+  #printArea .pr-score{font-size:34px;font-weight:700;color:#1e3a8a;font-family:'Space Grotesk',sans-serif;}
+  #printArea .pr-score-tag{font-size:12px;color:#666;}
+  #printArea .pr-empty{color:#999;font-size:12px;font-style:italic;}
+  #printArea .pr-text{font-size:12.5px;line-height:1.5;white-space:pre-wrap;}
+  #printArea .pr-gain{font-size:20px;font-weight:700;color:#0f9d78;}
+</style>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --bg: #060a14;
+    --bg-panel: #0d1424;
+    --bg-panel-2: #111a30;
+    --line: #1c2740;
+    --blue-deep: #1e3a8a;
+    --blue: #2563eb;
+    --cyan: #22d3ee;
+    --ice: #eaf4ff;
+    --slate: #7b8aad;
+    --slate-dim: #4b5876;
+    --good: #34d399;
+    --warn: #fbbf24;
+    --bad: #fb7185;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ice);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+
+  #app{max-width:920px;margin:0 auto;padding:28px 20px 100px;}
+
+  /* ---------- HEADER / SIGNATURE ---------- */
+  .header{
+    position:relative;
+    padding:32px 28px;
+    border-radius:18px;
+    background:linear-gradient(160deg,var(--bg-panel) 0%, var(--bg-panel-2) 100%);
+    border:1px solid var(--line);
+    overflow:hidden;
+    margin-bottom:22px;
+  }
+  .header svg.net{position:absolute; top:-40px; right:-60px; opacity:0.55; width:260px; height:260px;}
+  .header-inner{position:relative; z-index:1;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.14em;
+    color:var(--cyan);
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  .header h1{font-size:30px;margin:0 0 6px;font-weight:600;letter-spacing:-0.01em;}
+  .header p{color:var(--slate);font-size:14px;margin:0;max-width:520px;line-height:1.5;}
+
+  .meta-row{display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;}
+  .meta-row input{
+    flex:1;min-width:200px;
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--ice);
+    padding:10px 12px;
+    border-radius:8px;
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+  }
+  .meta-row input:focus{outline:none;border-color:var(--cyan);}
+
+  .btn{
+    border:1px solid var(--line);
+    background:var(--bg-panel-2);
+    color:var(--ice);
+    padding:10px 16px;
+    border-radius:8px;
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    font-weight:500;
+    cursor:pointer;
+    transition:border-color .15s;
+    white-space:nowrap;
+  }
+  .btn:hover{border-color:var(--cyan);}
+  .btn.primary{
+    background:linear-gradient(135deg,var(--blue),var(--cyan));
+    border:none;
+    color:#031018;
+    font-weight:600;
+  }
+  .btn.danger:hover{border-color:var(--bad);}
+  .btn.small{padding:6px 10px;font-size:12px;}
+
+  .saved-bar{
+    display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;
+  }
+  .chip{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    padding:5px 10px;
+    border-radius:20px;
+    border:1px solid var(--line);
+    color:var(--slate);
+    cursor:pointer;
+  }
+  .chip:hover{color:var(--cyan);border-color:var(--cyan);}
+
+  /* ---------- SECTIONS ---------- */
+  .section{
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    margin-bottom:16px;
+    overflow:hidden;
+  }
+  .section-head{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:18px 20px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .num{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--cyan);
+    background:rgba(34,211,238,0.08);
+    border:1px solid rgba(34,211,238,0.25);
+    width:28px;height:28px;
+    border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .section-head h2{font-size:16px;margin:0;font-weight:600;flex:1;}
+  .section-head .sub{color:var(--slate);font-size:12px;margin-top:2px;}
+  .caret{color:var(--slate-dim);transition:transform .2s;font-size:12px;}
+  .section.open .caret{transform:rotate(90deg);}
+  .section-body{
+    padding:0 20px 20px 62px;
+    display:none;
+  }
+  .section.open .section-body{display:block;}
+
+  .item{
+    display:flex;
+    gap:10px;
+    padding:10px 0;
+    border-top:1px solid var(--line);
+  }
+  .item:first-child{border-top:none;}
+  .item input[type=checkbox]{
+    width:18px;height:18px;
+    accent-color:var(--cyan);
+    margin-top:2px;
+    flex-shrink:0;
+    cursor:pointer;
+  }
+  .item-body{flex:1;}
+  .item-label{font-size:14px;color:var(--ice);}
+  .item textarea{
+    width:100%;
+    margin-top:6px;
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--slate);
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    padding:8px 10px;
+    border-radius:6px;
+    resize:vertical;
+    min-height:34px;
+  }
+  .item textarea:focus{outline:none;border-color:var(--cyan);color:var(--ice);}
+  .item textarea::placeholder{color:var(--slate-dim);}
+
+  .free-row{display:flex;gap:8px;margin-top:12px;}
+  .free-row input{
+    flex:1;
+    background:var(--bg);
+    border:1px dashed var(--line);
+    color:var(--ice);
+    padding:8px 10px;
+    border-radius:6px;
+    font-size:13px;
+  }
+  .free-row input:focus{outline:none;border-color:var(--cyan);}
+  .remove-x{color:var(--slate-dim);cursor:pointer;font-size:13px;padding:0 4px;}
+  .remove-x:hover{color:var(--bad);}
+
+  textarea.wide{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--ice);
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    padding:12px;
+    border-radius:8px;
+    min-height:80px;
+    resize:vertical;
+  }
+  textarea.wide:focus{outline:none;border-color:var(--cyan);}
+
+  /* ---------- MATURIDADE ---------- */
+  .pillar{
+    display:grid;
+    grid-template-columns:150px 1fr 40px;
+    align-items:center;
+    gap:14px;
+    padding:10px 0;
+    border-top:1px solid var(--line);
+  }
+  .pillar:first-child{border-top:none;}
+  .pillar-name{font-size:13.5px;color:var(--ice);}
+  .stars{display:flex;gap:4px;}
+  .star{
+    width:22px;height:22px;
+    cursor:pointer;
+    color:var(--slate-dim);
+    transition:color .1s;
+  }
+  .star.filled{color:var(--cyan);}
+  .pillar-score{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    color:var(--slate);
+    text-align:right;
+  }
+
+  .score-card{
+    margin-top:16px;
+    padding:20px;
+    border-radius:12px;
+    background:linear-gradient(135deg, rgba(37,99,235,0.12), rgba(34,211,238,0.08));
+    border:1px solid rgba(34,211,238,0.25);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .score-label{font-size:12px;color:var(--slate);text-transform:uppercase;letter-spacing:0.08em;font-family:'JetBrains Mono',monospace;}
+  .score-value{font-family:'Space Grotesk',sans-serif;font-size:38px;font-weight:700;line-height:1;margin-top:4px;}
+  .score-tag{
+    font-size:12px;
+    padding:6px 12px;
+    border-radius:20px;
+    font-weight:600;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  /* ---------- GANHOS ---------- */
+  .ganhos-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .ganhos-box{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px;}
+  .ganhos-box label{font-size:11px;color:var(--slate);text-transform:uppercase;letter-spacing:0.06em;font-family:'JetBrains Mono',monospace;}
+  .ganhos-box input{
+    width:100%;margin-top:8px;background:transparent;border:none;color:var(--ice);
+    font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;
+  }
+  .ganhos-box input:focus{outline:none;}
+  .economia{
+    grid-column:1/-1;
+    text-align:center;
+    padding:16px;
+    background:linear-gradient(135deg, rgba(52,211,153,0.1), rgba(34,211,238,0.06));
+    border:1px solid rgba(52,211,153,0.3);
+    border-radius:10px;
+  }
+  .economia .num-big{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;color:var(--good);}
+  .economia .txt{font-size:12px;color:var(--slate);margin-top:4px;}
+
+  /* ---------- ROADMAP ---------- */
+  .fase{
+    display:flex;gap:12px;align-items:flex-start;
+    padding:12px 0;
+    border-top:1px solid var(--line);
+    position:relative;
+  }
+  .fase:first-child{border-top:none;}
+  .fase-num{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;color:var(--cyan);
+    width:24px;height:24px;border-radius:50%;
+    border:1px solid var(--cyan);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .fase-body{flex:1;}
+  .fase-title{font-size:14px;font-weight:500;}
+  .fase input[type=text]{
+    width:100%;margin-top:4px;background:transparent;border:none;color:var(--slate);
+    font-size:12.5px;font-family:'Inter',sans-serif;
+  }
+  .fase input[type=text]:focus{outline:none;color:var(--ice);}
+
+  footer{
+    text-align:center;color:var(--slate-dim);font-size:11px;margin-top:30px;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  .save-status{
+    font-size:11px;color:var(--slate-dim);font-family:'JetBrains Mono',monospace;
+    margin-top:10px;min-height:14px;
+  }
+  .save-status.ok{color:var(--good);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="header">
+    <svg class="net" viewBox="0 0 200 200">
+      <defs>
+        <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#2563eb"/>
+          <stop offset="1" stop-color="#22d3ee"/>
+        </linearGradient>
+      </defs>
+      <g stroke="url(#g1)" stroke-width="1" opacity="0.7">
+        <line x1="40" y1="30" x2="100" y2="15"/>
+        <line x1="100" y1="15" x2="160" y2="45"/>
+        <line x1="40" y1="30" x2="90" y2="70"/>
+        <line x1="100" y1="15" x2="90" y2="70"/>
+        <line x1="160" y1="45" x2="90" y2="70"/>
+        <line x1="90" y1="70" x2="60" y2="110"/>
+        <line x1="60" y1="110" x2="120" y2="140"/>
+        <line x1="90" y1="70" x2="120" y2="140"/>
+        <line x1="120" y1="140" x2="170" y2="120"/>
+      </g>
+      <g fill="url(#g1)">
+        <circle cx="40" cy="30" r="4"/>
+        <circle cx="100" cy="15" r="4"/>
+        <circle cx="160" cy="45" r="4"/>
+        <circle cx="90" cy="70" r="4"/>
+        <circle cx="60" cy="110" r="4"/>
+        <circle cx="120" cy="140" r="4"/>
+        <circle cx="170" cy="120" r="4"/>
+      </g>
+    </svg>
+    <div class="header-inner">
+      <div class="eyebrow">Gauss Scan · Diagnóstico de Dados</div>
+      <h1>Roteiro do Diagnóstico</h1>
+      <p>Preencha durante ou logo após a reunião. Marque os pontos observados, anote os detalhes e o Data Score é calculado automaticamente na seção de maturidade.</p>
+
+      <div class="meta-row">
+        <input id="empresaNome" placeholder="Nome da empresa / cliente" oninput="scheduleSave()">
+        <input id="dataReuniao" type="date" oninput="scheduleSave()">
+        <button class="btn primary" onclick="salvarComoNovo()">Salvar diagnóstico</button>
+        <button class="btn" onclick="novoDiagnostico()">+ Novo</button>
+      </div>
+      <div class="meta-row" style="margin-top:8px">
+        <button class="btn" onclick="exportarPDF()">📄 Exportar PDF</button>
+        <button class="btn" onclick="exportarBackup()">⬇ Backup (.json)</button>
+        <button class="btn" onclick="document.getElementById('importFile').click()">⬆ Importar backup</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarBackup(event)">
+      </div>
+      <div class="save-status" id="saveStatus"></div>
+      <div class="saved-bar" id="savedBar"></div>
+    </div>
+  </div>
+
+  <!-- 1. EMPRESA -->
+  <div class="section open" id="sec1">
+    <div class="section-head" onclick="toggleSection('sec1')">
+      <div class="num">1</div>
+      <div><h2>Conhecendo a empresa</h2><div class="sub">5–10 min · entendimento do negócio</div></div>
+      <div class="caret">▶</div>
+    </div>
+    <div class="section-body" id="body-empresa"></div>
+  </div>
+
+  <!-- 2. DADOS -->
+  <div class="section" id="sec2">
+    <div class="section-head" onclick="toggleSection('sec2')">
+      <div class="num">2</div>
+      <div><h2>Levantamento dos dados</h2><div class="sub">onde as informações estão hoje</div></div>
+      <div class="caret">▶</div>
+    </div>
+    <div class="section-body" id="body-fontes"></div>
+  </div>
+
+  <!-- 3. PROCESSOS -->
+  <div class="section" id="sec3">
+    <div class="section-head" onclick="toggleSection('sec3')">
+      <div class="num">3</div>
+      <div><h2>Mapeamento dos processos</h2><div class="sub">fluxo do pedido/atendimento até a decisão — onde estão os gargalos</div></div>
+      <div class="caret">▶</div>
+    </div>
+    <div class="section-body">
+      <textarea class="wide" id="processoTexto" placeholder="Descreva o fluxo: quem recebe → quem lança → quem confere → quem faz relatório → quem decide. Anote gargalos (retrabalho, demora, erros, falta de integração)..." oninput="scheduleSave()"></textarea>
+    </div>
+  </div>
+
+  <!-- 4. MATURIDADE -->
+  <div class="section" id="sec4">
+    <div class="section-head" onclick="toggleSection('sec4')">
+      <div class="num">4</div>
+      <div><h2>Maturidade em dados</h2><div class="sub">nota 0–5 por pilar · gera o Data Score automaticamente</div></div>
+      <div class="caret">▶</div>
+    </div>
+    <div class="section-body" id="body-maturidade">
+      <div class="score-card">
+        <div>
+          <div class="score-label">Data Score</div>
+          <div class="score-value" id="scoreValue">0.0<span style="font-size:18px;color:var(--slate)">/5</span></div>
+        </div>
+        <div class="score-tag" id="scoreTag">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. PROBLEMAS -->
+  <div class="section" id="sec5">
+    <div class="section-head" onclick="toggleSection('sec5')">
+      <div class="num">5</div>
+      <div><h2>Problemas encontrados</h2><div class="sub">marque os observados e adicione outros</div></div>
+      <div class="caret">▶</div>
+    </div>
+    <div class="section-body" id="body-problemas"></div>
+  </div>
+
+  <!-- 6. OPORTUNIDADES -->
+  <div class="section" id="sec6">
+    <div class="section-head" onclick="toggleSection('sec6')">
+      <div class="num">6</div>
+      <div><h2>Oportunidades</h2><div class="sub">o "dinheiro perdido" — o que dá pra ganhar corrigindo</div></div>
+      <div class="caret">▶</div>
+    </div>
+    <div class="section-body" id="body-oportunidades"></div>
+  </div>
+
+  <!-- 7. GANHOS ESTIMADOS -->
+  <div class="section" id="sec7">
+    <div class="section-head" onclick="toggleSection('sec7')">
+      <div class="num">7</div>
+      <div><h2>Ganhos estimados</h2><div class="sub">calculadora rápida de horas economizadas por mês</div></div>
+      <div class="caret">▶</div>
+    </div>
+    <div class="section-body">
+      <div class="ganhos-grid">
+        <div class="ganhos-box">
+          <label>Horas/semana hoje (manual)</label>
+          <input type="number" id="horasAntes" min="0" step="0.5" oninput="calcularGanhos();scheduleSave()">
+        </div>
+        <div class="ganhos-box">
+          <label>Horas/semana depois (automatizado)</label>
+          <input type="number" id="horasDepois" min="0" step="0.5" oninput="calcularGanhos();scheduleSave()">
+        </div>
+        <div class="economia">
+          <div class="num-big" id="economiaMes">0 h/mês</div>
+          <div class="txt">economia estimada de tempo por mês</div>
+        </div>
+      </div>
+      <textarea class="wide" style="margin-top:14px" id="ganhosObs" placeholder="Outros ganhos qualitativos (ex: gestor passa a acompanhar resultado em tempo real em vez de 3 dias)..." oninput="scheduleSave()"></textarea>
+    </div>
+  </div>
+
+  <!-- 8. ROADMAP -->
+  <div class="section" id="sec8">
+    <div class="section-head" onclick="toggleSection('sec8')">
+      <div class="num">8</div>
+      <div><h2>Roadmap sugerido</h2><div class="sub">fases da proposta — sem entregar tudo</div></div>
+      <div class="caret">▶</div>
+    </div>
+    <div class="section-body" id="body-roadmap"></div>
+  </div>
+
+  <!-- 9. PROXIMOS PASSOS -->
+  <div class="section" id="sec9">
+    <div class="section-head" onclick="toggleSection('sec9')">
+      <div class="num">9</div>
+      <div><h2>Próximos passos / observações finais</h2><div class="sub">resumo para fechar o relatório e puxar o orçamento</div></div>
+      <div class="caret">▶</div>
+    </div>
+    <div class="section-body">
+      <textarea class="wide" id="proximosPassos" placeholder="Ex: Com base neste diagnóstico, identificamos oportunidades principalmente em organização de dados, indicadores e automações. Próxima etapa: projeto personalizado..." oninput="scheduleSave()"></textarea>
+    </div>
+  </div>
+
+  <footer class="no-print">gauss data · gauss scan · dados salvos neste aparelho (localStorage)</footer>
+</div>
+
+<div id="printArea"></div>
+
+<script>
+// ---------------- DATA MODEL ----------------
+
+const EMPRESA_PERGUNTAS = [
+  "O que a empresa faz?",
+  "Quantos funcionários?",
+  "Quantos clientes por mês?",
+  "Como funciona o processo de vendas?",
+  "Como vocês acompanham resultados hoje?",
+  "Quais são os maiores problemas, na visão deles?"
+];
+
+const FONTES_DADOS = [
+  "Excel", "Google Sheets", "ERP", "CRM", "WhatsApp",
+  "Sistema próprio", "Power BI", "Banco de dados", "APIs"
+];
+
+const PILARES_MATURIDADE = [
+  "Organização dos dados",
+  "Dashboards",
+  "Automação",
+  "Indicadores",
+  "Integração",
+  "Tomada de decisão"
+];
+
+const PROBLEMAS_COMUNS = [
+  "Não possuem indicadores em tempo real",
+  "Relatórios feitos manualmente",
+  "Dados duplicados",
+  "Não sabem quais clientes/produtos geram mais lucro",
+  "Perdem tempo montando planilhas",
+  "Não existe histórico centralizado"
+];
+
+const OPORTUNIDADES_COMUNS = [
+  "Reduzir horas por semana com automações",
+  "Acompanhar vendas/resultados diariamente",
+  "Identificar produtos ou clientes mais lucrativos",
+  "Reduzir erros operacionais",
+  "Acelerar tomada de decisão",
+  "Integrar sistemas hoje desconectados"
+];
+
+const FASES_ROADMAP = [
+  "Organização dos dados",
+  "Dashboard executivo",
+  "Automações",
+  "Indicadores",
+  "Acompanhamento mensal"
+];
+
+function defaultState(){
+  return {
+    empresaNome: "",
+    dataReuniao: "",
+    empresaRespostas: EMPRESA_PERGUNTAS.map(()=>({checked:false, obs:""})),
+    fontesRespostas: FONTES_DADOS.map(()=>({checked:false, obs:""})),
+    processoTexto: "",
+    maturidade: PILARES_MATURIDADE.map(()=>0),
+    problemas: PROBLEMAS_COMUNS.map(()=>({checked:false, obs:""})),
+    problemasExtra: [],
+    oportunidades: OPORTUNIDADES_COMUNS.map(()=>({checked:false, obs:""})),
+    oportunidadesExtra: [],
+    horasAntes: "",
+    horasDepois: "",
+    ganhosObs: "",
+    roadmap: FASES_ROADMAP.map(()=>({checked:false, obs:""})),
+    proximosPassos: ""
+  };
+}
+
+let state = defaultState();
+let currentKey = null; // storage key for the diagnostic being edited
+let saveTimer = null;
+
+// ---------------- LOCAL STORAGE ADAPTER ----------------
+// Uses the browser's own localStorage so data persists on-device
+// (works offline, works once installed as a home-screen app, no
+// dependency on the claude.ai artifact environment).
+const storage = {
+  async get(key){
+    const v = localStorage.getItem(key);
+    if(v === null) return null;
+    return {key, value:v};
+  },
+  async set(key, value){
+    localStorage.setItem(key, value);
+    return {key, value};
+  },
+  async delete(key){
+    localStorage.removeItem(key);
+    return {key, deleted:true};
+  },
+  async list(prefix=''){
+    const keys = Object.keys(localStorage).filter(k=>k.startsWith(prefix));
+    return {keys};
+  }
+};
+
+// ---------------- RENDER: LIST BUILDERS ----------------
+
+function renderChecklist(containerId, items, dataArr, onChange){
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  items.forEach((label, i)=>{
+    const row = document.createElement('div');
+    row.className = 'item';
+    row.innerHTML = `
+      <input type="checkbox" ${dataArr[i].checked ? 'checked':''} data-idx="${i}">
+      <div class="item-body">
+        <div class="item-label">${label}</div>
+        <textarea placeholder="observações...">${dataArr[i].obs || ""}</textarea>
+      </div>`;
+    const cb = row.querySelector('input');
+    const ta = row.querySelector('textarea');
+    cb.addEventListener('change', ()=>{ dataArr[i].checked = cb.checked; scheduleSave(); });
+    ta.addEventListener('input', ()=>{ dataArr[i].obs = ta.value; scheduleSave(); });
+    el.appendChild(row);
+  });
+}
+
+function renderExtraList(containerId, arr, placeholder){
+  const el = document.getElementById(containerId);
+  let wrap = el.querySelector('.extra-wrap');
+  if(!wrap){
+    wrap = document.createElement('div');
+    wrap.className = 'extra-wrap';
+    el.appendChild(wrap);
+  }
+  wrap.innerHTML = "";
+  arr.forEach((val, i)=>{
+    const row = document.createElement('div');
+    row.className = 'free-row';
+    row.innerHTML = `<input type="text" value="${val.replace(/"/g,'&quot;')}" placeholder="${placeholder}"><span class="remove-x">✕</span>`;
+    const inp = row.querySelector('input');
+    inp.addEventListener('input', ()=>{ arr[i] = inp.value; scheduleSave(); });
+    row.querySelector('.remove-x').addEventListener('click', ()=>{
+      arr.splice(i,1);
+      renderExtraList(containerId, arr, placeholder);
+      scheduleSave();
+    });
+    wrap.appendChild(row);
+  });
+  let addRow = el.querySelector('.add-row');
+  if(!addRow){
+    addRow = document.createElement('div');
+    addRow.className = 'free-row add-row';
+    addRow.style.marginTop = '4px';
+    addRow.innerHTML = `<button class="btn small" style="width:100%">+ Adicionar item</button>`;
+    addRow.querySelector('button').addEventListener('click', ()=>{
+      arr.push("");
+      renderExtraList(containerId, arr, placeholder);
+    });
+    el.appendChild(addRow);
+  }
+}
+
+function renderMaturidade(){
+  const body = document.getElementById('body-maturidade');
+  let wrap = body.querySelector('.pillars-wrap');
+  if(!wrap){
+    wrap = document.createElement('div');
+    wrap.className = 'pillars-wrap';
+    body.insertBefore(wrap, body.querySelector('.score-card'));
+  }
+  wrap.innerHTML = "";
+  PILARES_MATURIDADE.forEach((name, i)=>{
+    const row = document.createElement('div');
+    row.className = 'pillar';
+    const starsHtml = [1,2,3,4,5].map(n=>{
+      const filled = n <= state.maturidade[i];
+      return `<svg class="star ${filled?'filled':''}" data-idx="${i}" data-val="${n}" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>`;
+    }).join("");
+    row.innerHTML = `
+      <div class="pillar-name">${name}</div>
+      <div class="stars">${starsHtml}</div>
+      <div class="pillar-score mono">${state.maturidade[i]}/5</div>`;
+    row.querySelectorAll('.star').forEach(star=>{
+      star.addEventListener('click', ()=>{
+        const idx = +star.dataset.idx, val = +star.dataset.val;
+        state.maturidade[idx] = (state.maturidade[idx] === val) ? val-1 : val;
+        renderMaturidade();
+        scheduleSave();
+      });
+    });
+    wrap.appendChild(row);
+  });
+  updateScore();
+}
+
+function updateScore(){
+  const avg = state.maturidade.reduce((a,b)=>a+b,0) / state.maturidade.length;
+  const rounded = Math.round(avg*10)/10;
+  document.getElementById('scoreValue').innerHTML = rounded.toFixed(1) + '<span style="font-size:18px;color:var(--slate)">/5</span>';
+  const tag = document.getElementById('scoreTag');
+  let label, color;
+  if(avg < 1.5){ label="Crítico"; color="var(--bad)"; }
+  else if(avg < 2.5){ label="Baixa maturidade"; color="var(--warn)"; }
+  else if(avg < 3.5){ label="Em desenvolvimento"; color="var(--cyan)"; }
+  else { label="Madura"; color="var(--good)"; }
+  tag.textContent = label;
+  tag.style.color = color;
+  tag.style.border = `1px solid ${color}`;
+  tag.style.background = 'transparent';
+}
+
+function renderRoadmap(){
+  const el = document.getElementById('body-roadmap');
+  el.innerHTML = "";
+  FASES_ROADMAP.forEach((label, i)=>{
+    const row = document.createElement('div');
+    row.className = 'fase';
+    row.innerHTML = `
+      <div class="fase-num mono">${i+1}</div>
+      <div class="fase-body">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" ${state.roadmap[i].checked?'checked':''} style="accent-color:var(--cyan);width:16px;height:16px;">
+          <span class="fase-title">${label}</span>
+        </label>
+        <input type="text" placeholder="nota rápida sobre esta fase para este cliente..." value="${state.roadmap[i].obs.replace(/"/g,'&quot;')}">
+      </div>`;
+    row.querySelector('input[type=checkbox]').addEventListener('change', e=>{ state.roadmap[i].checked = e.target.checked; scheduleSave(); });
+    row.querySelector('input[type=text]').addEventListener('input', e=>{ state.roadmap[i].obs = e.target.value; scheduleSave(); });
+    el.appendChild(row);
+  });
+}
+
+function calcularGanhos(){
+  const antes = parseFloat(document.getElementById('horasAntes').value) || 0;
+  const depois = parseFloat(document.getElementById('horasDepois').value) || 0;
+  const diff = Math.max(0, antes - depois);
+  const mes = Math.round(diff * 4.33 * 10) / 10;
+  document.getElementById('economiaMes').textContent = mes + ' h/mês';
+}
+
+function toggleSection(id){
+  document.getElementById(id).classList.toggle('open');
+}
+
+// ---------------- FULL RENDER ----------------
+
+function renderAll(){
+  document.getElementById('empresaNome').value = state.empresaNome;
+  document.getElementById('dataReuniao').value = state.dataReuniao;
+
+  renderChecklist('body-empresa', EMPRESA_PERGUNTAS, state.empresaRespostas);
+  renderChecklist('body-fontes', FONTES_DADOS, state.fontesRespostas);
+  document.getElementById('processoTexto').value = state.processoTexto;
+
+  renderMaturidade();
+
+  renderChecklist('body-problemas', PROBLEMAS_COMUNS, state.problemas);
+  renderExtraList('body-problemas', state.problemasExtra, "outro problema observado...");
+
+  renderChecklist('body-oportunidades', OPORTUNIDADES_COMUNS, state.oportunidades);
+  renderExtraList('body-oportunidades', state.oportunidadesExtra, "outra oportunidade...");
+
+  document.getElementById('horasAntes').value = state.horasAntes;
+  document.getElementById('horasDepois').value = state.horasDepois;
+  document.getElementById('ganhosObs').value = state.ganhosObs;
+  calcularGanhos();
+
+  renderRoadmap();
+  document.getElementById('proximosPassos').value = state.proximosPassos;
+}
+
+// bind simple text fields not covered by checklist renderers
+document.getElementById('processoTexto').addEventListener('input', e=> state.processoTexto = e.target.value);
+document.getElementById('ganhosObs').addEventListener('input', e=> state.ganhosObs = e.target.value);
+document.getElementById('proximosPassos').addEventListener('input', e=> state.proximosPassos = e.target.value);
+document.getElementById('empresaNome').addEventListener('input', e=> state.empresaNome = e.target.value);
+document.getElementById('dataReuniao').addEventListener('input', e=> state.dataReuniao = e.target.value);
+
+// ---------------- STORAGE ----------------
+
+function slugify(s){
+  return (s||'sem-nome').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'sem-nome';
+}
+
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  const statusEl = document.getElementById('saveStatus');
+  statusEl.textContent = 'salvando...';
+  statusEl.classList.remove('ok');
+  saveTimer = setTimeout(async ()=>{
+    if(!currentKey){
+      currentKey = 'diagnostico:' + slugify(state.empresaNome) + ':' + Date.now();
+    }
+    try{
+      await storage.set(currentKey, JSON.stringify(state));
+      statusEl.textContent = 'salvo ✓';
+      statusEl.classList.add('ok');
+      refreshSavedBar();
+    }catch(err){
+      statusEl.textContent = 'erro ao salvar';
+    }
+  }, 600);
+}
+
+async function refreshSavedBar(){
+  const bar = document.getElementById('savedBar');
+  try{
+    const result = await storage.list('diagnostico:');
+    if(!result || !result.keys){ bar.innerHTML=''; return; }
+    bar.innerHTML = '';
+    for(const key of result.keys){
+      try{
+        const entry = await storage.get(key);
+        const parsed = JSON.parse(entry.value);
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.textContent = (parsed.empresaNome || 'sem nome');
+        chip.title = key;
+        chip.addEventListener('click', ()=> carregarDiagnostico(key, parsed));
+        bar.appendChild(chip);
+      }catch(e){}
+    }
+  }catch(e){
+    // no saved diagnostics yet
+  }
+}
+
+function carregarDiagnostico(key, parsed){
+  currentKey = key;
+  state = Object.assign(defaultState(), parsed);
+  // ensure arrays match current template lengths (in case template evolves)
+  renderAll();
+  document.getElementById('saveStatus').textContent = 'carregado: ' + (parsed.empresaNome || key);
+}
+
+function novoDiagnostico(){
+  currentKey = null;
+  state = defaultState();
+  renderAll();
+  document.getElementById('saveStatus').textContent = '';
+}
+
+function salvarComoNovo(){
+  if(!state.empresaNome){
+    document.getElementById('empresaNome').focus();
+    return;
+  }
+  currentKey = 'diagnostico:' + slugify(state.empresaNome) + ':' + Date.now();
+  scheduleSave();
+}
+
+// ---------------- BACKUP: EXPORT / IMPORT ----------------
+
+async function exportarBackup(){
+  const result = await storage.list('diagnostico:');
+  const dump = {};
+  if(result && result.keys){
+    for(const key of result.keys){
+      const entry = await storage.get(key);
+      if(entry) dump[key] = entry.value;
+    }
+  }
+  const blob = new Blob([JSON.stringify(dump, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `gauss-scan-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function importarBackup(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const dump = JSON.parse(text);
+    for(const key of Object.keys(dump)){
+      await storage.set(key, dump[key]);
+    }
+    document.getElementById('saveStatus').textContent = 'backup importado ✓';
+    document.getElementById('saveStatus').classList.add('ok');
+    refreshSavedBar();
+  }catch(err){
+    alert('Não foi possível ler este arquivo de backup.');
+  }
+  event.target.value = '';
+}
+
+// ---------------- PDF / RELATÓRIO IMPRIMÍVEL ----------------
+
+function escapeHtml(str){
+  return (str||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+}
+
+function buildPrintReport(){
+  const avg = state.maturidade.reduce((a,b)=>a+b,0) / state.maturidade.length;
+  const rounded = Math.round(avg*10)/10;
+  let tagLabel = avg<1.5?'Crítico':avg<2.5?'Baixa maturidade':avg<3.5?'Em desenvolvimento':'Madura';
+
+  const listBlock = (label, items, extra) => {
+    const checked = items.filter(i=>i.checked);
+    let html = `<h2>${label}</h2>`;
+    if(checked.length===0 && (!extra || extra.every(e=>!e.trim()))){
+      html += `<div class="pr-empty">Nenhum item marcado.</div>`;
+      return html;
+    }
+    checked.forEach((it, idx)=>{
+      const originalLabel = items === state.problemas ? PROBLEMAS_COMUNS[items.indexOf(it)]
+        : items === state.oportunidades ? OPORTUNIDADES_COMUNS[items.indexOf(it)]
+        : items === state.empresaRespostas ? EMPRESA_PERGUNTAS[items.indexOf(it)]
+        : items === state.fontesRespostas ? FONTES_DADOS[items.indexOf(it)] : '';
+      html += `<div class="pr-item">${escapeHtml(originalLabel)}</div>`;
+      if(it.obs) html += `<div class="pr-obs">${escapeHtml(it.obs)}</div>`;
+    });
+    if(extra){
+      extra.filter(e=>e.trim()).forEach(e=> html += `<div class="pr-item">${escapeHtml(e)}</div>`);
+    }
+    return html;
+  };
+
+  const antes = parseFloat(state.horasAntes)||0;
+  const depois = parseFloat(state.horasDepois)||0;
+  const economiaMes = Math.round(Math.max(0,antes-depois) * 4.33 * 10)/10;
+
+  let html = `
+    <h1>Gauss Scan — Diagnóstico de Dados</h1>
+    <div class="pr-sub">${escapeHtml(state.empresaNome || 'Cliente sem nome')} ${state.dataReuniao ? '· '+state.dataReuniao : ''}</div>
+
+    ${listBlock('1. Sobre a empresa', state.empresaRespostas)}
+    ${listBlock('2. Fontes de dados identificadas', state.fontesRespostas)}
+
+    <h2>3. Processos e gargalos</h2>
+    <div class="pr-text">${state.processoTexto ? escapeHtml(state.processoTexto) : '<span class="pr-empty">Não preenchido.</span>'}</div>
+
+    <h2>4. Maturidade em dados</h2>
+    <div class="pr-score">${rounded.toFixed(1)}/5</div>
+    <div class="pr-score-tag">${tagLabel}</div>
+    ${PILARES_MATURIDADE.map((p,i)=>`<div class="pr-item" style="padding-left:0">${p}: ${state.maturidade[i]}/5</div>`).join('')}
+
+    ${listBlock('5. Problemas encontrados', state.problemas, state.problemasExtra)}
+    ${listBlock('6. Oportunidades', state.oportunidades, state.oportunidadesExtra)}
+
+    <h2>7. Ganhos estimados</h2>
+    ${(antes||depois) ? `<div class="pr-gain">${economiaMes} h/mês economizadas</div><div class="pr-obs" style="margin-left:0">de ${antes}h para ${depois}h por semana</div>` : '<div class="pr-empty">Não preenchido.</div>'}
+    ${state.ganhosObs ? `<div class="pr-text" style="margin-top:6px">${escapeHtml(state.ganhosObs)}</div>` : ''}
+
+    <h2>8. Roadmap sugerido</h2>
+    ${state.roadmap.some(r=>r.checked) ? state.roadmap.filter(r=>r.checked).map((r,i)=>{
+        const idx = state.roadmap.indexOf(r);
+        return `<div class="pr-item">${FASES_ROADMAP[idx]}${r.obs?` — <span class="pr-obs" style="margin-left:0">${escapeHtml(r.obs)}</span>`:''}</div>`;
+      }).join('') : '<div class="pr-empty">Nenhuma fase marcada.</div>'}
+
+    <h2>9. Próximos passos</h2>
+    <div class="pr-text">${state.proximosPassos ? escapeHtml(state.proximosPassos) : '<span class="pr-empty">Não preenchido.</span>'}</div>
+  `;
+  return html;
+}
+
+function exportarPDF(){
+  const area = document.getElementById('printArea');
+  area.innerHTML = buildPrintReport();
+  area.classList.add('active');
+  setTimeout(()=>{
+    window.print();
+  }, 50);
+}
+window.addEventListener('afterprint', ()=>{
+  document.getElementById('printArea').classList.remove('active');
+});
+
+// ---------------- SERVICE WORKER (instalação como app) ----------------
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
+
+// ---------------- INIT ----------------
+renderAll();
+refreshSavedBar();
+</script>
+</body>
+</html>
