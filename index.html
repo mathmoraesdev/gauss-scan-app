@@ -892,8 +892,16 @@ function ensureSpace(doc, cursor, needed){
   const pageHeight = doc.internal.pageSize.getHeight();
   if(cursor.y + needed > pageHeight - 16){
     doc.addPage();
-    cursor.y = 20;
+    cursor.y = 22; // deixa espaço para o mini cabeçalho de marca desenhado depois
   }
+}
+
+// converte "AAAA-MM-DD" (valor nativo do <input type="date">) para "DD/MM/AAAA"
+function formatDataBR(iso){
+  if(!iso) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if(!m) return iso;
+  return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
 // desenha um check em vetor (não depende de glifo de fonte, sempre renderiza igual)
@@ -1114,14 +1122,155 @@ function pdfRoadmapSection(doc, cursor){
 }
 
 function pdfFooters(doc, cursor){
+  // a capa (página 1) não entra na numeração/rodapé — a contagem começa no
+  // conteúdo de fato (página 2 = "1")
   const total = doc.internal.getNumberOfPages();
-  for(let p=1; p<=total; p++){
+  const contentTotal = Math.max(total - 1, 1);
+  for(let p=2; p<=total; p++){
     doc.setPage(p);
     doc.setFont('helvetica','normal');
     doc.setFontSize(8);
     doc.setTextColor(148,163,184);
     doc.text('gauss data · gauss scan', cursor.margin, doc.internal.pageSize.getHeight() - 8);
-    doc.text(`${p}/${total}`, cursor.pageWidth - cursor.margin, doc.internal.pageSize.getHeight() - 8, { align:'right' });
+    doc.text(`${p-1}/${contentTotal}`, cursor.pageWidth - cursor.margin, doc.internal.pageSize.getHeight() - 8, { align:'right' });
+  }
+}
+
+// ---- Capa separada (página 1): logo grande, nome do cliente, data e selo de confidencialidade ----
+function pdfCoverPage(doc, cursor){
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const pageWidth = cursor.pageWidth;
+
+  const steps = 60;
+  for(let i=0; i<steps; i++){
+    const t = i/steps;
+    const r = Math.round(15 + (30-15)*t);
+    const g = Math.round(23 + (58-23)*t);
+    const b = Math.round(42 + (138-42)*t);
+    doc.setFillColor(r,g,b);
+    doc.rect(0, pageHeight*t, pageWidth, pageHeight/steps + 0.5, 'F');
+  }
+
+  const logoSize = 40;
+  try{ doc.addImage(LOGO_PNG_B64, 'PNG', pageWidth/2 - logoSize/2, 66, logoSize, logoSize); }catch(e){}
+
+  doc.setFont('times', 'bolditalic');
+  doc.setFontSize(30);
+  doc.setTextColor(255,255,255);
+  doc.text('Gauss Scan', pageWidth/2, 124, { align:'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(12.5);
+  doc.setTextColor(191,219,254);
+  doc.text('Diagnóstico de Dados', pageWidth/2, 133, { align:'center' });
+
+  const tag = 'DIAGNÓSTICO CONFIDENCIAL';
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  const tagW = doc.getTextWidth(tag) + 10;
+  const tagX = pageWidth/2 - tagW/2;
+  const tagY = 146;
+  doc.setDrawColor(34,211,238);
+  doc.setLineWidth(0.45);
+  doc.roundedRect(tagX, tagY, tagW, 7.5, 3.8, 3.8, 'S');
+  doc.setTextColor(34,211,238);
+  doc.text(tag, pageWidth/2, tagY + 5.1, { align:'center' });
+
+  doc.setDrawColor(51,65,85);
+  doc.setLineWidth(0.3);
+  doc.line(pageWidth/2 - 30, pageHeight - 62, pageWidth/2 + 30, pageHeight - 62);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(255,255,255);
+  doc.text(state.empresaNome || 'Cliente sem nome', pageWidth/2, pageHeight - 50, { align:'center' });
+
+  if(state.dataReuniao){
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10.5);
+    doc.setTextColor(191,219,254);
+    doc.text(formatDataBR(state.dataReuniao), pageWidth/2, pageHeight - 42, { align:'center' });
+  }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(100,116,139);
+  doc.text('gauss data · gauss scan', pageWidth/2, pageHeight - 16, { align:'center' });
+}
+
+// ---- Resumo executivo automático (topo da página de conteúdo) ----
+function pdfExecutiveSummary(doc, cursor){
+  const avg = state.maturidade.reduce((a,b)=>a+b,0) / state.maturidade.length;
+  const tagLabel = avg<1.5 ? 'crítica' : avg<2.5 ? 'baixa' : avg<3.5 ? 'em desenvolvimento' : 'madura';
+  const rounded = (Math.round(avg*10)/10).toFixed(1).replace('.', ',');
+
+  const piores = PILARES_MATURIDADE
+    .map((p,i)=>({ p, v: state.maturidade[i] }))
+    .sort((a,b)=> a.v - b.v)
+    .slice(0,2)
+    .map(x=>x.p);
+
+  const nome = state.empresaNome ? `a ${state.empresaNome}` : 'a empresa';
+  let texto = `Com base neste diagnóstico, ${nome} apresenta maturidade ${tagLabel} (${rounded}/5)`;
+  texto += piores.length ? `, com maior oportunidade em ${piores.join(' e ')}.` : '.';
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.8);
+  const boxW = cursor.pageWidth - cursor.margin*2;
+  const lines = doc.splitTextToSize(texto, boxW - 10);
+  const boxH = lines.length * 5 + 12;
+
+  ensureSpace(doc, cursor, boxH + 6);
+  const boxY = cursor.y - 4;
+
+  doc.setFillColor(240,249,255);
+  doc.roundedRect(cursor.margin, boxY, boxW, boxH, 3, 3, 'F');
+  doc.setDrawColor(191,219,254);
+  doc.setLineWidth(0.25);
+  doc.roundedRect(cursor.margin, boxY, boxW, boxH, 3, 3, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.3);
+  doc.setTextColor(8,145,178);
+  doc.text('RESUMO EXECUTIVO', cursor.margin + 5, boxY + 7);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.8);
+  doc.setTextColor(30,41,59);
+  doc.text(lines, cursor.margin + 5, boxY + 14);
+
+  cursor.y = boxY + boxH + 8;
+}
+
+// ---- Mini cabeçalho de marca (páginas de conteúdo a partir da 2ª) ----
+function pdfMiniHeader(doc, cursor){
+  const stripH = 12;
+  doc.setFillColor(248,250,252);
+  doc.rect(0, 0, cursor.pageWidth, stripH, 'F');
+  doc.setDrawColor(226,232,240);
+  doc.setLineWidth(0.3);
+  doc.line(0, stripH, cursor.pageWidth, stripH);
+
+  try{ doc.addImage(LOGO_PNG_B64, 'PNG', cursor.margin, 2, 8, 8); }catch(e){}
+
+  doc.setFont('times', 'bolditalic');
+  doc.setFontSize(10.5);
+  doc.setTextColor(30,58,138);
+  doc.text('Gauss Scan', cursor.margin + 11, 7.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(148,163,184);
+  doc.text(state.empresaNome || '', cursor.pageWidth - cursor.margin, 7.5, { align:'right' });
+}
+
+// aplica o mini cabeçalho em todas as páginas de conteúdo a partir da 3ª
+// (a 2ª página já tem o cabeçalho cheio com degradê; a 1ª é a capa)
+function pdfPageHeaders(doc, cursor){
+  const total = doc.internal.getNumberOfPages();
+  for(let p=3; p<=total; p++){
+    doc.setPage(p);
+    pdfMiniHeader(doc, cursor);
   }
 }
 
@@ -1141,6 +1290,10 @@ function gerarPDF(){
     const pageWidth = doc.internal.pageSize.getWidth();
     const cursor = { y:44, margin:15, pageWidth };
 
+    // ---- Página 1: capa separada ----
+    pdfCoverPage(doc, cursor);
+    doc.addPage();
+
     // ---- Cabeçalho com gradiente e logo ----
     const headerH = 32;
     const steps = 50;
@@ -1153,7 +1306,7 @@ function gerarPDF(){
       doc.rect(pageWidth*t, 0, pageWidth/steps + 0.5, headerH, 'F');
     }
     try{ doc.addImage(LOGO_PNG_B64, 'PNG', pageWidth - 27, 8, 15, 15); }catch(e){}
-    doc.setFont('helvetica','bold');
+    doc.setFont('times','bolditalic');
     doc.setFontSize(19);
     doc.setTextColor(255,255,255);
     doc.text('Gauss Scan', cursor.margin, 16);
@@ -1171,12 +1324,14 @@ function gerarPDF(){
       doc.setFont('helvetica','normal');
       doc.setFontSize(9.5);
       doc.setTextColor(100,116,139);
-      doc.text(state.dataReuniao, pageWidth - cursor.margin, cursor.y - 2, { align:'right' });
+      doc.text(formatDataBR(state.dataReuniao), pageWidth - cursor.margin, cursor.y - 2, { align:'right' });
     }
     doc.setDrawColor(226,232,240);
     doc.setLineWidth(0.3);
     doc.line(cursor.margin, cursor.y + 1, pageWidth - cursor.margin, cursor.y + 1);
     cursor.y += 9;
+
+    pdfExecutiveSummary(doc, cursor);
 
     pdfChecklistSection(doc, cursor, 1, 'Sobre a empresa', state.empresaRespostas, EMPRESA_PERGUNTAS);
     pdfChecklistSection(doc, cursor, 2, 'Fontes de dados identificadas', state.fontesRespostas, FONTES_DADOS);
@@ -1188,6 +1343,7 @@ function gerarPDF(){
     pdfRoadmapSection(doc, cursor);
     pdfParagraphSection(doc, cursor, 9, 'Próximos passos', state.proximosPassos);
 
+    pdfPageHeaders(doc, cursor);
     pdfFooters(doc, cursor);
 
     const slug = slugify(state.empresaNome) || 'diagnostico';
