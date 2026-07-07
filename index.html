@@ -10,28 +10,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-  @media print{
-    body *{visibility:hidden;}
-    #printArea, #printArea *{visibility:visible;}
-    #printArea{position:absolute;top:0;left:0;width:100%;}
-    .no-print{display:none !important;}
-  }
-  #printArea{display:none;}
-  #printArea.active{display:block;}
-  #printArea{background:#fff;color:#111;font-family:'Inter',sans-serif;padding:20px;}
-  #printArea h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;color:#0d1424;}
-  #printArea .pr-sub{color:#666;font-size:12px;margin-bottom:18px;}
-  #printArea h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:22px 0 8px;color:#1e3a8a;border-bottom:1px solid #ddd;padding-bottom:4px;}
-  #printArea .pr-item{font-size:12.5px;margin:4px 0;padding-left:14px;position:relative;}
-  #printArea .pr-item:before{content:"✓";position:absolute;left:0;color:#22a094;font-weight:700;}
-  #printArea .pr-obs{color:#666;font-size:11.5px;margin-left:14px;font-style:italic;}
-  #printArea .pr-score{font-size:34px;font-weight:700;color:#1e3a8a;font-family:'Space Grotesk',sans-serif;}
-  #printArea .pr-score-tag{font-size:12px;color:#666;}
-  #printArea .pr-empty{color:#999;font-size:12px;font-style:italic;}
-  #printArea .pr-text{font-size:12.5px;line-height:1.5;white-space:pre-wrap;}
-  #printArea .pr-gain{font-size:20px;font-weight:700;color:#0f9d78;}
-</style>
-<style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
   :root{
@@ -512,8 +490,6 @@
   <footer class="no-print">gauss data · gauss scan · dados salvos neste aparelho (localStorage)</footer>
 </div>
 
-<div id="printArea"></div>
-
 <script>
 // ---------------- DATA MODEL ----------------
 
@@ -951,7 +927,7 @@ function buildPrintReport(){
     <h2>4. Maturidade em dados</h2>
     <div class="pr-score">${rounded.toFixed(1)}/5</div>
     <div class="pr-score-tag">${tagLabel}</div>
-    ${PILARES_MATURIDADE.map((p,i)=>`<div class="pr-item" style="padding-left:0">${p}: ${state.maturidade[i]}/5</div>`).join('')}
+    <div class="pr-pillars">${PILARES_MATURIDADE.map((p,i)=>`<div class="pr-pillar-row"><span>${p}</span><span class="pr-pillar-val">${state.maturidade[i]}/5</span></div>`).join('')}</div>
 
     ${listBlock('5. Problemas encontrados', state.problemas, state.problemasExtra)}
     ${listBlock('6. Oportunidades', state.oportunidades, state.oportunidadesExtra)}
@@ -972,17 +948,40 @@ function buildPrintReport(){
   return html;
 }
 
+const PRINT_STYLES = `
+  @page{ margin:16mm; }
+  *{box-sizing:border-box;}
+  body{background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;padding:0;margin:0;}
+  h1{font-size:24px;margin:0 0 4px;color:#0d1424;}
+  .pr-sub{color:#666;font-size:12px;margin-bottom:18px;}
+  h2{font-size:15px;margin:22px 0 8px;color:#1e3a8a;border-bottom:1px solid #ddd;padding-bottom:4px;page-break-after:avoid;}
+  .pr-item{font-size:12.5px;margin:4px 0;padding-left:16px;position:relative;page-break-inside:avoid;}
+  .pr-item:before{content:"\\2713";position:absolute;left:0;color:#22a094;font-weight:700;}
+  .pr-obs{color:#666;font-size:11.5px;margin-left:16px;font-style:italic;}
+  .pr-score{font-size:34px;font-weight:700;color:#1e3a8a;}
+  .pr-score-tag{font-size:12px;color:#666;margin-bottom:10px;}
+  .pr-pillars{margin-top:6px;}
+  .pr-pillar-row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px solid #eee;max-width:340px;}
+  .pr-pillar-val{color:#1e3a8a;font-weight:700;}
+  .pr-empty{color:#999;font-size:12px;font-style:italic;}
+  .pr-text{font-size:12.5px;line-height:1.5;white-space:pre-wrap;}
+  .pr-gain{font-size:20px;font-weight:700;color:#0f9d78;}
+`;
+
 function exportarPDF(){
-  const area = document.getElementById('printArea');
-  area.innerHTML = buildPrintReport();
-  area.classList.add('active');
-  setTimeout(()=>{
-    window.print();
-  }, 50);
+  const reportHtml = buildPrintReport();
+  const printWin = window.open('', '_blank');
+  if(!printWin){
+    alert('Seu navegador bloqueou a janela do relatório. Permita pop-ups para este site e tente de novo.');
+    return;
+  }
+  printWin.document.open();
+  printWin.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Gauss Scan — ${escapeHtml(state.empresaNome||'Diagnóstico')}</title><style>${PRINT_STYLES}</style></head><body>${reportHtml}</body></html>`);
+  printWin.document.close();
+  const triggerPrint = () => { try{ printWin.focus(); printWin.print(); }catch(e){} };
+  printWin.onload = triggerPrint;
+  setTimeout(triggerPrint, 400); // fallback if onload doesn't fire (some mobile browsers)
 }
-window.addEventListener('afterprint', ()=>{
-  document.getElementById('printArea').classList.remove('active');
-});
 
 // ---------------- SERVICE WORKER (instalação como app) ----------------
 if('serviceWorker' in navigator){
