@@ -892,7 +892,7 @@ function ensureSpace(doc, cursor, needed){
   const pageHeight = doc.internal.pageSize.getHeight();
   if(cursor.y + needed > pageHeight - 16){
     doc.addPage();
-    cursor.y = 22; // deixa espaço para o mini cabeçalho de marca desenhado depois
+    cursor.y = 40; // deixa espaço para o cabeçalho degradê desenhado depois
   }
 }
 
@@ -1006,6 +1006,12 @@ function pdfParagraphSection(doc, cursor, num, title, text){
 }
 
 function pdfMaturitySection(doc, cursor){
+  // reserva de antemão o espaço total da seção (título + card + pilares),
+  // forçando quebra de página antes de começar caso não caiba inteira,
+  // para que a seção nunca fique dividida entre duas páginas
+  const estimatedHeight = 14 + 33 + PILARES_MATURIDADE.length*7 + 8;
+  ensureSpace(doc, cursor, estimatedHeight);
+
   pdfHeading(doc, cursor, 4, 'Maturidade em dados');
   const avg = state.maturidade.reduce((a,b)=>a+b,0) / state.maturidade.length;
   const rounded = Math.round(avg*10)/10;
@@ -1131,8 +1137,7 @@ function pdfFooters(doc, cursor){
     doc.setFont('helvetica','normal');
     doc.setFontSize(8);
     doc.setTextColor(148,163,184);
-    doc.text('gauss data · gauss scan', cursor.margin, doc.internal.pageSize.getHeight() - 8);
-    doc.text(`${p-1}/${contentTotal}`, cursor.pageWidth - cursor.margin, doc.internal.pageSize.getHeight() - 8, { align:'right' });
+    doc.text(`${p-1}/${contentTotal}`, cursor.pageWidth/2, doc.internal.pageSize.getHeight() - 8, { align:'center' });
   }
 }
 
@@ -1159,8 +1164,8 @@ function pdfCoverPage(doc, cursor){
   doc.setTextColor(255,255,255);
   doc.text('Gauss Scan', pageWidth/2, 124, { align:'center' });
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(12.5);
+  doc.setFont('times', 'italic');
+  doc.setFontSize(13);
   doc.setTextColor(191,219,254);
   doc.text('Diagnóstico de Dados', pageWidth/2, 133, { align:'center' });
 
@@ -1191,11 +1196,6 @@ function pdfCoverPage(doc, cursor){
     doc.setTextColor(191,219,254);
     doc.text(formatDataBR(state.dataReuniao), pageWidth/2, pageHeight - 42, { align:'center' });
   }
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(100,116,139);
-  doc.text('gauss data · gauss scan', pageWidth/2, pageHeight - 16, { align:'center' });
 }
 
 // ---- Resumo executivo automático (topo da página de conteúdo) ----
@@ -1242,35 +1242,37 @@ function pdfExecutiveSummary(doc, cursor){
   cursor.y = boxY + boxH + 8;
 }
 
-// ---- Mini cabeçalho de marca (páginas de conteúdo a partir da 2ª) ----
-function pdfMiniHeader(doc, cursor){
-  const stripH = 12;
-  doc.setFillColor(248,250,252);
-  doc.rect(0, 0, cursor.pageWidth, stripH, 'F');
-  doc.setDrawColor(226,232,240);
-  doc.setLineWidth(0.3);
-  doc.line(0, stripH, cursor.pageWidth, stripH);
-
-  try{ doc.addImage(LOGO_PNG_B64, 'PNG', cursor.margin, 2, 8, 8); }catch(e){}
-
-  doc.setFont('times', 'bolditalic');
-  doc.setFontSize(10.5);
-  doc.setTextColor(30,58,138);
-  doc.text('Gauss Scan', cursor.margin + 11, 7.5);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(148,163,184);
-  doc.text(state.empresaNome || '', cursor.pageWidth - cursor.margin, 7.5, { align:'right' });
+// ---- Cabeçalho cheio com gradiente e logo (repetido em todas as páginas de conteúdo) ----
+function pdfContentHeader(doc, cursor){
+  const pageWidth = cursor.pageWidth;
+  const headerH = 32;
+  const steps = 50;
+  for(let i=0; i<steps; i++){
+    const t = i/steps;
+    const r = Math.round(37 + (34-37)*t);
+    const g = Math.round(99 + (211-99)*t);
+    const b = Math.round(235 + (238-235)*t);
+    doc.setFillColor(r,g,b);
+    doc.rect(pageWidth*t, 0, pageWidth/steps + 0.5, headerH, 'F');
+  }
+  try{ doc.addImage(LOGO_PNG_B64, 'PNG', pageWidth - 27, 8, 15, 15); }catch(e){}
+  doc.setFont('times','bolditalic');
+  doc.setFontSize(19);
+  doc.setTextColor(255,255,255);
+  doc.text('Gauss Scan', cursor.margin, 16);
+  doc.setFont('times','italic');
+  doc.setFontSize(11);
+  doc.setTextColor(224,242,254);
+  doc.text('Diagnóstico de Dados', cursor.margin, 24);
 }
 
-// aplica o mini cabeçalho em todas as páginas de conteúdo a partir da 3ª
-// (a 2ª página já tem o cabeçalho cheio com degradê; a 1ª é a capa)
+// aplica o cabeçalho cheio em todas as páginas de conteúdo (a partir da 2ª;
+// a 1ª é a capa, que tem seu próprio design)
 function pdfPageHeaders(doc, cursor){
   const total = doc.internal.getNumberOfPages();
-  for(let p=3; p<=total; p++){
+  for(let p=2; p<=total; p++){
     doc.setPage(p);
-    pdfMiniHeader(doc, cursor);
+    pdfContentHeader(doc, cursor);
   }
 }
 
@@ -1293,27 +1295,9 @@ function gerarPDF(){
     // ---- Página 1: capa separada ----
     pdfCoverPage(doc, cursor);
     doc.addPage();
-
-    // ---- Cabeçalho com gradiente e logo ----
-    const headerH = 32;
-    const steps = 50;
-    for(let i=0; i<steps; i++){
-      const t = i/steps;
-      const r = Math.round(37 + (34-37)*t);
-      const g = Math.round(99 + (211-99)*t);
-      const b = Math.round(235 + (238-235)*t);
-      doc.setFillColor(r,g,b);
-      doc.rect(pageWidth*t, 0, pageWidth/steps + 0.5, headerH, 'F');
-    }
-    try{ doc.addImage(LOGO_PNG_B64, 'PNG', pageWidth - 27, 8, 15, 15); }catch(e){}
-    doc.setFont('times','bolditalic');
-    doc.setFontSize(19);
-    doc.setTextColor(255,255,255);
-    doc.text('Gauss Scan', cursor.margin, 16);
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(10.5);
-    doc.setTextColor(224,242,254);
-    doc.text('Diagnóstico de Dados', cursor.margin, 24);
+    // (o cabeçalho com gradiente e logo é aplicado a todas as páginas de
+    // conteúdo no final, via pdfPageHeaders, para garantir que fique
+    // idêntico em todas elas)
 
     // ---- Linha com cliente e data ----
     doc.setFont('helvetica','bold');
