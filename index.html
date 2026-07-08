@@ -611,11 +611,11 @@
   <div class="section" id="sec9">
     <div class="section-head" onclick="toggleSection('sec9')">
       <div class="num">9</div>
-      <div><h2>Próximos passos / observações finais</h2><div class="sub">resumo para fechar o relatório e puxar o orçamento</div></div>
+      <div><h2>Próximos passos / observações finais</h2><div class="sub">texto gerado automaticamente no PDF a partir do diagnóstico — puxando pra próxima reunião (proposta comercial)</div></div>
       <div class="caret">▶</div>
     </div>
     <div class="section-body">
-      <textarea class="wide" id="proximosPassos" placeholder="Ex: Com base neste diagnóstico, identificamos oportunidades principalmente em organização de dados, indicadores e automações. Próxima etapa: projeto personalizado..." oninput="scheduleSave()"></textarea>
+      <textarea class="wide" id="proximosPassos" placeholder="Opcional: observação manual específica deste cliente, exibida abaixo da recomendação automática (ex: já demonstrou interesse em automação de relatórios)..." oninput="scheduleSave()"></textarea>
     </div>
   </div>
 
@@ -1311,6 +1311,95 @@ function pdfChecklistSection(doc, cursor, num, title, items, originalLabels, ext
   cursor.y += 4;
 }
 
+// monta o texto persuasivo de "próximos passos" a partir dos dados do
+// diagnóstico. objetivo: mostrar potencial concreto e convencer o cliente a
+// querer a próxima reunião (proposta comercial), sem entregar detalhes de
+// implementação — isso fica pra reunião seguinte.
+function buildProximosPassosTexto(){
+  const nome = state.empresaNome ? state.empresaNome : 'a empresa';
+  const { avg, rounded } = getMaturidadeInfo();
+
+  let abertura;
+  if(avg < 2.5){
+    abertura = `Este diagnóstico mostra que ${nome} ainda opera com dados dispersos, processos manuais e pouca visibilidade sobre o próprio negócio. Isso tem um custo invisível: cada mês nesse cenário é um mês de decisões tomadas com menos informação do que seria possível — e esse custo só cresce com o tempo.`;
+  } else if(avg < 3.5){
+    abertura = `Este diagnóstico mostra que ${nome} já deu passos importantes na organização dos dados, mas ainda deixa ganhos relevantes na mesa por falta de estrutura, automação e indicadores centralizados. É exatamente nesse ponto — quando já existe uma base, mas falta consolidar — que o retorno de organizar tudo costuma aparecer mais rápido.`;
+  } else {
+    abertura = `Este diagnóstico mostra que ${nome} já tem uma base de dados sólida, o que é raro. Isso muda o jogo: em vez de construir do zero, o próximo passo é destravar ganhos finos de automação e inteligência sobre uma estrutura que já funciona.`;
+  }
+
+  const oportunidadesChecadas = state.oportunidades
+    .map((o,i)=>({ checked:o.checked, label:OPORTUNIDADES_COMUNS[i] }))
+    .filter(o=>o.checked)
+    .map(o=>o.label);
+
+  let oportunidadesTexto = '';
+  if(oportunidadesChecadas.length){
+    const destaque = oportunidadesChecadas.slice(0,2).join(' e ').toLowerCase();
+    oportunidadesTexto = ` As oportunidades de maior impacto identificadas foram: ${destaque}.`;
+  }
+
+  const antes = parseFloat(state.horasAntes) || 0;
+  const depois = parseFloat(state.horasDepois) || 0;
+  const economiaMes = (antes || depois) ? Math.round(Math.max(0, antes - depois) * 4.33 * 10) / 10 : 0;
+
+  let economiaTexto = '';
+  if(economiaMes > 0){
+    const economiaMesBR = String(economiaMes).replace('.', ',');
+    economiaTexto = ` Só nas rotinas já mapeadas, estimamos uma economia de ${economiaMesBR} horas por mês — tempo hoje perdido em tarefas manuais e que pode voltar para quem toma decisão.`;
+  }
+
+  const cta = ` O próximo passo é uma reunião de apresentação da proposta, onde detalhamos o plano de implementação, prazos e investimento — sempre desenhados sob medida a partir do que foi mapeado neste diagnóstico (nota de maturidade ${rounded}/5). Recomendamos agendar essa conversa nos próximos dias para não perder o momentum e começar a colher esses ganhos o quanto antes.`;
+
+  return abertura + oportunidadesTexto + economiaTexto + cta;
+}
+
+// ---- Próximos passos: caixa de recomendação automática + observações manuais opcionais ----
+function pdfNextStepsSection(doc, cursor){
+  pdfHeading(doc, cursor, 9, 'Próximos passos');
+
+  const texto = buildProximosPassosTexto();
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.8);
+  const boxW = cursor.pageWidth - cursor.margin*2;
+  const lines = doc.splitTextToSize(texto, boxW - 10);
+  const boxH = lines.length * 5 + 16;
+
+  ensureSpace(doc, cursor, boxH + 6);
+  const boxY = cursor.y - 4;
+
+  doc.setFillColor(255,251,235);
+  doc.roundedRect(cursor.margin, boxY, boxW, boxH, 3, 3, 'F');
+  doc.setDrawColor(253,230,138);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(cursor.margin, boxY, boxW, boxH, 3, 3, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.3);
+  doc.setTextColor(180,83,9);
+  doc.text('RECOMENDAÇÃO', cursor.margin + 5, boxY + 7);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.8);
+  doc.setTextColor(30,41,59);
+  doc.text(lines, cursor.margin + 5, boxY + 14);
+
+  cursor.y = boxY + boxH + 8;
+
+  if(state.proximosPassos){
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(100,116,139);
+    const obsLines = doc.splitTextToSize(state.proximosPassos, cursor.pageWidth - cursor.margin*2);
+    obsLines.forEach(line=>{
+      ensureSpace(doc, cursor, 6);
+      doc.text(line, cursor.margin, cursor.y);
+      cursor.y += 5;
+    });
+    cursor.y += 4;
+  }
+}
+
 function pdfParagraphSection(doc, cursor, num, title, text){
   pdfHeading(doc, cursor, num, title);
   const isEmpty = !text;
@@ -1523,11 +1612,18 @@ function pdfCoverPage(doc, cursor){
   }
 }
 
-// ---- Resumo executivo automático (topo da página de conteúdo) ----
-function pdfExecutiveSummary(doc, cursor){
+// calcula média/label/nota de maturidade a partir do state (usado no resumo
+// executivo e nos próximos passos, pra manter os dois consistentes)
+function getMaturidadeInfo(){
   const avg = state.maturidade.reduce((a,b)=>a+b,0) / state.maturidade.length;
   const tagLabel = avg<1.5 ? 'crítica' : avg<2.5 ? 'baixa' : avg<3.5 ? 'em desenvolvimento' : 'madura';
   const rounded = (Math.round(avg*10)/10).toFixed(1).replace('.', ',');
+  return { avg, tagLabel, rounded };
+}
+
+// ---- Resumo executivo automático (topo da página de conteúdo) ----
+function pdfExecutiveSummary(doc, cursor){
+  const { avg, tagLabel, rounded } = getMaturidadeInfo();
 
   const piores = PILARES_MATURIDADE
     .map((p,i)=>({ p, v: state.maturidade[i] }))
@@ -1650,7 +1746,7 @@ function gerarPDF(){
     pdfChecklistSection(doc, cursor, 6, 'Oportunidades', state.oportunidades, OPORTUNIDADES_COMUNS, state.oportunidadesExtra);
     pdfGainsSection(doc, cursor);
     pdfRoadmapSection(doc, cursor);
-    pdfParagraphSection(doc, cursor, 9, 'Próximos passos', state.proximosPassos);
+    pdfNextStepsSection(doc, cursor);
 
     pdfPageHeaders(doc, cursor);
     pdfFooters(doc, cursor);
