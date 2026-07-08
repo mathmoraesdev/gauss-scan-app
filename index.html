@@ -313,20 +313,153 @@
     margin-top:10px;min-height:14px;
   }
   .save-status.ok{color:var(--good);}
+
+  /* ---------- HOME / CLIENTES ---------- */
+  .hidden{display:none !important;}
+
+  .diag-topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin-bottom:16px;flex-wrap:wrap;
+  }
+  .status-select{
+    background:var(--bg);border:1px solid var(--line);color:var(--ice);
+    padding:8px 10px;border-radius:8px;font-family:'Inter',sans-serif;font-size:12.5px;cursor:pointer;
+  }
+  .status-select:focus{outline:none;border-color:var(--cyan);}
+
+  .status-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+  .status-tab{
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;
+    padding:7px 12px;border-radius:20px;border:1px solid var(--line);
+    background:var(--bg-panel);color:var(--slate);cursor:pointer;
+    display:flex;align-items:center;gap:6px;
+  }
+  .status-tab:hover{border-color:var(--cyan);color:var(--cyan);}
+  .status-tab.active{border-color:var(--cyan);color:var(--cyan);background:rgba(34,211,238,0.08);}
+  .status-tab-count{
+    background:rgba(255,255,255,0.06);border-radius:10px;padding:1px 6px;font-size:10.5px;
+  }
+
+  .new-client-card{
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:12px;
+    padding:16px;margin-bottom:18px;
+  }
+  .new-client-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .new-client-row input[type=text]{
+    flex:2;min-width:200px;background:var(--bg);border:1px solid var(--line);color:var(--ice);
+    padding:10px 12px;border-radius:8px;font-family:'Inter',sans-serif;font-size:14px;
+  }
+  .new-client-row input[type=text]:focus{outline:none;border-color:var(--cyan);}
+  .new-client-row select{
+    flex:1;min-width:160px;background:var(--bg);border:1px solid var(--line);color:var(--ice);
+    padding:10px 12px;border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;
+  }
+
+  .client-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;
+  }
+  .client-card{
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px;display:flex;flex-direction:column;gap:8px;
+  }
+  .client-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+  .client-name{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;line-height:1.3;}
+  .status-badge{
+    align-self:flex-start;font-family:'JetBrains Mono',monospace;font-size:10.5px;
+    padding:4px 10px;border-radius:20px;border:1px solid var(--line);
+  }
+  .client-meta{font-size:11.5px;color:var(--slate-dim);font-family:'JetBrains Mono',monospace;}
+  .client-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center;}
+  .client-actions .status-select-inline{
+    background:var(--bg);border:1px solid var(--line);color:var(--slate);
+    padding:6px 8px;border-radius:6px;font-size:11.5px;font-family:'Inter',sans-serif;cursor:pointer;flex:1;min-width:130px;
+  }
+  .btn.danger{color:var(--bad);}
+
+  .empty-state{
+    text-align:center;color:var(--slate);font-size:13.5px;padding:40px 20px;
+    border:1px dashed var(--line);border-radius:14px;
+  }
 </style>
 </head>
 <body>
 <div id="app">
 
+  <!-- ===================== HOME: CLIENTES ===================== -->
+  <div id="view-home" class="view">
+    <div class="header">
+      <svg class="net" viewBox="0 0 200 200">
+        <defs>
+          <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#2563eb"/>
+            <stop offset="1" stop-color="#22d3ee"/>
+          </linearGradient>
+        </defs>
+        <g stroke="url(#g1)" stroke-width="1" opacity="0.7">
+          <line x1="40" y1="30" x2="100" y2="15"/>
+          <line x1="100" y1="15" x2="160" y2="45"/>
+          <line x1="40" y1="30" x2="90" y2="70"/>
+          <line x1="100" y1="15" x2="90" y2="70"/>
+          <line x1="160" y1="45" x2="90" y2="70"/>
+          <line x1="90" y1="70" x2="60" y2="110"/>
+          <line x1="60" y1="110" x2="120" y2="140"/>
+          <line x1="90" y1="70" x2="120" y2="140"/>
+          <line x1="120" y1="140" x2="170" y2="120"/>
+        </g>
+        <g fill="url(#g1)">
+          <circle cx="40" cy="30" r="4"/>
+          <circle cx="100" cy="15" r="4"/>
+          <circle cx="160" cy="45" r="4"/>
+          <circle cx="90" cy="70" r="4"/>
+          <circle cx="60" cy="110" r="4"/>
+          <circle cx="120" cy="140" r="4"/>
+          <circle cx="170" cy="120" r="4"/>
+        </g>
+      </svg>
+      <div class="header-inner">
+        <div class="eyebrow">Gauss Scan · Diagnóstico de Dados</div>
+        <h1>Clientes</h1>
+        <p>Gerencie seus clientes e prospects, acompanhe em que momento cada um está e abra o diagnóstico de cada um.</p>
+
+        <div class="meta-row">
+          <input id="buscaCliente" placeholder="Buscar cliente..." oninput="renderHome()">
+          <button class="btn primary" onclick="abrirNovoCliente()">+ Novo cliente</button>
+        </div>
+        <div class="meta-row" style="margin-top:8px">
+          <button class="btn" onclick="exportarBackup()">⬇ Backup (.json)</button>
+          <button class="btn" onclick="document.getElementById('importFile').click()">⬆ Importar backup</button>
+          <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarBackup(event)">
+        </div>
+      </div>
+    </div>
+
+    <div id="novoClienteForm" class="new-client-card hidden">
+      <div class="new-client-row">
+        <input type="text" id="novoClienteNome" placeholder="Nome do cliente / empresa" onkeydown="if(event.key==='Enter')confirmarNovoCliente()">
+        <select id="novoClienteStatus"></select>
+        <button class="btn primary small" onclick="confirmarNovoCliente()">Criar</button>
+        <button class="btn small" onclick="cancelarNovoCliente()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="status-tabs" id="statusTabs"></div>
+
+    <div class="client-grid" id="clientGrid"></div>
+    <div class="empty-state hidden" id="emptyState"></div>
+  </div>
+
+  <!-- ===================== DIAGNÓSTICO DE UM CLIENTE ===================== -->
+  <div id="view-diagnostico" class="view hidden">
+
   <div class="header">
     <svg class="net" viewBox="0 0 200 200">
       <defs>
-        <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id="g1b" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="#2563eb"/>
           <stop offset="1" stop-color="#22d3ee"/>
         </linearGradient>
       </defs>
-      <g stroke="url(#g1)" stroke-width="1" opacity="0.7">
+      <g stroke="url(#g1b)" stroke-width="1" opacity="0.7">
         <line x1="40" y1="30" x2="100" y2="15"/>
         <line x1="100" y1="15" x2="160" y2="45"/>
         <line x1="40" y1="30" x2="90" y2="70"/>
@@ -337,7 +470,7 @@
         <line x1="90" y1="70" x2="120" y2="140"/>
         <line x1="120" y1="140" x2="170" y2="120"/>
       </g>
-      <g fill="url(#g1)">
+      <g fill="url(#g1b)">
         <circle cx="40" cy="30" r="4"/>
         <circle cx="100" cy="15" r="4"/>
         <circle cx="160" cy="45" r="4"/>
@@ -348,24 +481,23 @@
       </g>
     </svg>
     <div class="header-inner">
+      <div class="diag-topbar">
+        <button class="btn small" onclick="goHome()">← Clientes</button>
+        <select id="clienteStatus" class="status-select" onchange="onStatusChange()"></select>
+      </div>
       <div class="eyebrow">Gauss Scan · Diagnóstico de Dados</div>
       <h1>Roteiro do Diagnóstico</h1>
       <p>Preencha durante ou logo após a reunião. Marque os pontos observados, anote os detalhes e o Data Score é calculado automaticamente na seção de maturidade.</p>
 
       <div class="meta-row">
-        <input id="empresaNome" placeholder="Nome da empresa / cliente" oninput="scheduleSave()">
+        <input id="empresaNome" placeholder="Nome da empresa / cliente" oninput="onNomeInput()">
         <input id="dataReuniao" type="date" oninput="scheduleSave()">
-        <button class="btn primary" onclick="salvarComoNovo()">Salvar diagnóstico</button>
-        <button class="btn" onclick="novoDiagnostico()">+ Novo</button>
       </div>
       <div class="meta-row" style="margin-top:8px">
         <button class="btn" id="btnExportarPDF" onclick="exportarPDF()">📄 Exportar PDF</button>
-        <button class="btn" onclick="exportarBackup()">⬇ Backup (.json)</button>
-        <button class="btn" onclick="document.getElementById('importFile').click()">⬆ Importar backup</button>
-        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarBackup(event)">
+        <button class="btn danger" onclick="excluirClienteAtual()">🗑 Excluir cliente</button>
       </div>
       <div class="save-status" id="saveStatus"></div>
-      <div class="saved-bar" id="savedBar"></div>
     </div>
   </div>
 
@@ -487,6 +619,8 @@
     </div>
   </div>
 
+  </div><!-- /view-diagnostico -->
+
   <footer class="no-print">gauss data · gauss scan · dados salvos neste aparelho (localStorage)</footer>
 </div>
 
@@ -544,6 +678,13 @@ const FASES_ROADMAP = [
   "Acompanhamento mensal"
 ];
 
+const CLIENT_STATUSES = [
+  { key:'primeiro_contato',    label:'Primeiro contato',     color:'var(--cyan)' },
+  { key:'processo_comercial',  label:'Processo comercial',   color:'var(--warn)' },
+  { key:'cliente',             label:'Cliente',              color:'var(--good)' },
+  { key:'perdido',             label:'Perdido / inativo',    color:'var(--bad)'  }
+];
+
 function defaultState(){
   return {
     empresaNome: "",
@@ -565,8 +706,11 @@ function defaultState(){
 }
 
 let state = defaultState();
-let currentKey = null; // storage key for the diagnostic being edited
 let saveTimer = null;
+
+let clients = {};            // id -> {id, nome, status, criadoEm, atualizadoEm}
+let currentClientId = null;  // client currently open in the diagnostic view
+let activeStatusFilter = 'todos';
 
 // ---------------- LOCAL STORAGE ADAPTER ----------------
 // Uses the browser's own localStorage so data persists on-device
@@ -763,7 +907,6 @@ function renderAll(){
 document.getElementById('processoTexto').addEventListener('input', e=> state.processoTexto = e.target.value);
 document.getElementById('ganhosObs').addEventListener('input', e=> state.ganhosObs = e.target.value);
 document.getElementById('proximosPassos').addEventListener('input', e=> state.proximosPassos = e.target.value);
-document.getElementById('empresaNome').addEventListener('input', e=> state.empresaNome = e.target.value);
 document.getElementById('dataReuniao').addEventListener('input', e=> state.dataReuniao = e.target.value);
 
 // ---------------- STORAGE ----------------
@@ -772,82 +915,264 @@ function slugify(s){
   return (s||'sem-nome').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'sem-nome';
 }
 
+function genId(){
+  return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function statusInfo(key){
+  return CLIENT_STATUSES.find(s=>s.key===key) || CLIENT_STATUSES[0];
+}
+
+function statusOptionsHtml(selected){
+  return CLIENT_STATUSES.map(s=>`<option value="${s.key}" ${s.key===selected?'selected':''}>${s.label}</option>`).join('');
+}
+
+function formatDataHora(ts){
+  if(!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+}
+
+// diagnóstico só é salvo quando existe um cliente aberto (currentClientId)
 function scheduleSave(){
+  if(!currentClientId) return;
   clearTimeout(saveTimer);
   const statusEl = document.getElementById('saveStatus');
   statusEl.textContent = 'salvando...';
   statusEl.classList.remove('ok');
   saveTimer = setTimeout(async ()=>{
-    if(!currentKey){
-      currentKey = 'diagnostico:' + slugify(state.empresaNome) + ':' + Date.now();
-    }
     try{
-      await storage.set(currentKey, JSON.stringify(state));
+      await storage.set('diagnostico:'+currentClientId, JSON.stringify(state));
+      if(clients[currentClientId]){
+        clients[currentClientId].atualizadoEm = Date.now();
+        await storage.set('cliente:'+currentClientId, JSON.stringify(clients[currentClientId]));
+      }
       statusEl.textContent = 'salvo ✓';
       statusEl.classList.add('ok');
-      refreshSavedBar();
     }catch(err){
       statusEl.textContent = 'erro ao salvar';
     }
   }, 600);
 }
 
-async function refreshSavedBar(){
-  const bar = document.getElementById('savedBar');
-  try{
-    const result = await storage.list('diagnostico:');
-    if(!result || !result.keys){ bar.innerHTML=''; return; }
-    bar.innerHTML = '';
+function onNomeInput(){
+  const val = document.getElementById('empresaNome').value;
+  state.empresaNome = val;
+  if(currentClientId && clients[currentClientId]){
+    clients[currentClientId].nome = val;
+  }
+  scheduleSave();
+}
+
+async function onStatusChange(){
+  if(!currentClientId || !clients[currentClientId]) return;
+  const val = document.getElementById('clienteStatus').value;
+  clients[currentClientId].status = val;
+  clients[currentClientId].atualizadoEm = Date.now();
+  await storage.set('cliente:'+currentClientId, JSON.stringify(clients[currentClientId]));
+}
+
+// ---------------- MIGRAÇÃO DE DADOS ANTIGOS ----------------
+// versões anteriores salvavam diagnósticos soltos, sem um cliente vinculado
+// (chave "diagnostico:<slug>:<timestamp>"). Aqui criamos automaticamente um
+// cliente para cada diagnóstico antigo encontrado, na primeira execução.
+async function migrarDadosAntigos(){
+  const clientKeys = await storage.list('cliente:');
+  if(clientKeys && clientKeys.keys && clientKeys.keys.length > 0) return;
+
+  const diagKeys = await storage.list('diagnostico:');
+  if(!diagKeys || !diagKeys.keys || !diagKeys.keys.length) return;
+
+  const groups = {};
+  for(const key of diagKeys.keys){
+    const parts = key.split(':');
+    if(parts.length < 3) continue; // já está no formato novo "diagnostico:<id>"
+    const slug = parts[1];
+    const ts = parseInt(parts[2], 10) || 0;
+    if(!groups[slug] || ts > groups[slug].ts){ groups[slug] = { ts, key }; }
+  }
+
+  for(const slug of Object.keys(groups)){
+    try{
+      const entry = await storage.get(groups[slug].key);
+      const parsed = JSON.parse(entry.value);
+      const id = genId();
+      const when = groups[slug].ts || Date.now();
+      const clientRecord = { id, nome: parsed.empresaNome || slug, status:'primeiro_contato', criadoEm: when, atualizadoEm: when };
+      await storage.set('cliente:'+id, JSON.stringify(clientRecord));
+      await storage.set('diagnostico:'+id, JSON.stringify(parsed));
+    }catch(e){}
+  }
+}
+
+async function loadClients(){
+  await migrarDadosAntigos();
+  clients = {};
+  const result = await storage.list('cliente:');
+  if(result && result.keys){
     for(const key of result.keys){
       try{
         const entry = await storage.get(key);
         const parsed = JSON.parse(entry.value);
-        const chip = document.createElement('div');
-        chip.className = 'chip';
-        chip.textContent = (parsed.empresaNome || 'sem nome');
-        chip.title = key;
-        chip.addEventListener('click', ()=> carregarDiagnostico(key, parsed));
-        bar.appendChild(chip);
+        clients[parsed.id] = parsed;
       }catch(e){}
     }
-  }catch(e){
-    // no saved diagnostics yet
   }
 }
 
-function carregarDiagnostico(key, parsed){
-  currentKey = key;
-  state = Object.assign(defaultState(), parsed);
-  // ensure arrays match current template lengths (in case template evolves)
-  renderAll();
-  document.getElementById('saveStatus').textContent = 'carregado: ' + (parsed.empresaNome || key);
+// ---------------- NAVEGAÇÃO ENTRE TELAS ----------------
+
+function switchView(v){
+  document.getElementById('view-home').classList.toggle('hidden', v!=='home');
+  document.getElementById('view-diagnostico').classList.toggle('hidden', v!=='diagnostico');
+  window.scrollTo(0,0);
 }
 
-function novoDiagnostico(){
-  currentKey = null;
-  state = defaultState();
+function goHome(){
+  currentClientId = null;
+  switchView('home');
+  renderHome();
+}
+
+async function abrirCliente(id){
+  const c = clients[id];
+  if(!c) return;
+  currentClientId = id;
+  let loaded = null;
+  try{
+    const entry = await storage.get('diagnostico:'+id);
+    if(entry) loaded = JSON.parse(entry.value);
+  }catch(e){}
+  state = Object.assign(defaultState(), loaded || {});
+  state.empresaNome = c.nome;
   renderAll();
+  document.getElementById('clienteStatus').innerHTML = statusOptionsHtml(c.status);
   document.getElementById('saveStatus').textContent = '';
+  switchView('diagnostico');
 }
 
-function salvarComoNovo(){
-  if(!state.empresaNome){
-    document.getElementById('empresaNome').focus();
+async function excluirCliente(id){
+  const c = clients[id];
+  if(!confirm(`Excluir o cliente "${c ? c.nome : ''}" e todo o diagnóstico salvo dele? Essa ação não pode ser desfeita.`)) return;
+  await storage.delete('cliente:'+id);
+  await storage.delete('diagnostico:'+id);
+  delete clients[id];
+  if(currentClientId === id){ goHome(); } else { renderHome(); }
+}
+
+function excluirClienteAtual(){
+  if(currentClientId) excluirCliente(currentClientId);
+}
+
+async function mudarStatusInline(id, novoStatus){
+  if(!clients[id]) return;
+  clients[id].status = novoStatus;
+  clients[id].atualizadoEm = Date.now();
+  await storage.set('cliente:'+id, JSON.stringify(clients[id]));
+  renderHome();
+}
+
+// ---------------- HOME: CRIAR / LISTAR CLIENTES ----------------
+
+function abrirNovoCliente(){
+  document.getElementById('novoClienteForm').classList.remove('hidden');
+  document.getElementById('novoClienteStatus').innerHTML = statusOptionsHtml('primeiro_contato');
+  const inp = document.getElementById('novoClienteNome');
+  inp.value = '';
+  inp.focus();
+}
+
+function cancelarNovoCliente(){
+  document.getElementById('novoClienteForm').classList.add('hidden');
+}
+
+async function confirmarNovoCliente(){
+  const nome = document.getElementById('novoClienteNome').value.trim();
+  if(!nome){
+    document.getElementById('novoClienteNome').focus();
     return;
   }
-  currentKey = 'diagnostico:' + slugify(state.empresaNome) + ':' + Date.now();
-  scheduleSave();
+  const status = document.getElementById('novoClienteStatus').value;
+  const id = genId();
+  const now = Date.now();
+  const clientRecord = { id, nome, status, criadoEm: now, atualizadoEm: now };
+  clients[id] = clientRecord;
+  await storage.set('cliente:'+id, JSON.stringify(clientRecord));
+  cancelarNovoCliente();
+  abrirCliente(id);
+}
+
+function setStatusFilter(key){
+  activeStatusFilter = key;
+  renderHome();
+}
+
+function renderStatusTabs(){
+  const el = document.getElementById('statusTabs');
+  const all = Object.values(clients);
+  const counts = { todos: all.length };
+  CLIENT_STATUSES.forEach(s=> counts[s.key] = all.filter(c=>c.status===s.key).length);
+  const tabs = [{key:'todos', label:'Todos'}, ...CLIENT_STATUSES];
+  el.innerHTML = tabs.map(t=>`
+    <button class="status-tab ${activeStatusFilter===t.key?'active':''}" onclick="setStatusFilter('${t.key}')">
+      ${t.label} <span class="status-tab-count">${counts[t.key]||0}</span>
+    </button>`).join('');
+}
+
+function renderHome(){
+  renderStatusTabs();
+  const grid = document.getElementById('clientGrid');
+  const empty = document.getElementById('emptyState');
+  const busca = (document.getElementById('buscaCliente').value || '').toLowerCase().trim();
+
+  let list = Object.values(clients);
+  if(activeStatusFilter !== 'todos') list = list.filter(c=>c.status===activeStatusFilter);
+  if(busca) list = list.filter(c=>(c.nome||'').toLowerCase().includes(busca));
+  list.sort((a,b)=> (b.atualizadoEm||0) - (a.atualizadoEm||0));
+
+  if(list.length===0){
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
+    empty.textContent = Object.keys(clients).length===0
+      ? 'Nenhum cliente ainda. Clique em "+ Novo cliente" para começar.'
+      : 'Nenhum cliente encontrado com esse filtro/busca.';
+    return;
+  }
+  empty.classList.add('hidden');
+
+  grid.innerHTML = list.map(c=>{
+    const st = statusInfo(c.status);
+    return `
+    <div class="client-card">
+      <div class="client-card-top">
+        <div class="client-name">${escapeHtml(c.nome || 'Sem nome')}</div>
+      </div>
+      <span class="status-badge" style="color:${st.color};border-color:${st.color}">${st.label}</span>
+      <div class="client-meta">Atualizado em ${formatDataHora(c.atualizadoEm)}</div>
+      <div class="client-actions">
+        <button class="btn small primary" onclick="abrirCliente('${c.id}')">Abrir diagnóstico</button>
+        <select class="status-select-inline" onchange="mudarStatusInline('${c.id}', this.value)">${statusOptionsHtml(c.status)}</select>
+        <button class="btn small danger" onclick="excluirCliente('${c.id}')" title="Excluir cliente">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ---------------- BACKUP: EXPORT / IMPORT ----------------
 
 async function exportarBackup(){
-  const result = await storage.list('diagnostico:');
   const dump = {};
-  if(result && result.keys){
-    for(const key of result.keys){
-      const entry = await storage.get(key);
-      if(entry) dump[key] = entry.value;
+  for(const prefix of ['cliente:', 'diagnostico:']){
+    const result = await storage.list(prefix);
+    if(result && result.keys){
+      for(const key of result.keys){
+        const entry = await storage.get(key);
+        if(entry) dump[key] = entry.value;
+      }
     }
   }
   const blob = new Blob([JSON.stringify(dump, null, 2)], {type:'application/json'});
@@ -871,9 +1196,9 @@ async function importarBackup(event){
     for(const key of Object.keys(dump)){
       await storage.set(key, dump[key]);
     }
-    document.getElementById('saveStatus').textContent = 'backup importado ✓';
-    document.getElementById('saveStatus').classList.add('ok');
-    refreshSavedBar();
+    await loadClients();
+    goHome();
+    alert('Backup importado com sucesso ✓');
   }catch(err){
     alert('Não foi possível ler este arquivo de backup.');
   }
@@ -1352,8 +1677,11 @@ if('serviceWorker' in navigator){
 }
 
 // ---------------- INIT ----------------
-renderAll();
-refreshSavedBar();
+(async function init(){
+  await loadClients();
+  switchView('home');
+  renderHome();
+})();
 </script>
 </body>
 </html>
